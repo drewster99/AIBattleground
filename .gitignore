@@ -1,0 +1,20 @@
+# macos stuff
+.DS_Store
+
+# Xcode
+xcuserdata
+
+### Xcode ###
+#   *.pbxuser
+#   xcuserdata
+#   */xcuserdata/*
+#   **/xcuserdata/
+#   **/*.xcuserdata/
+#   *.xccheckout
+#   *.xcuserstate
+#   *.xcscmblueprint
+#   *.xcuserdatad
+#   *.xcbkptlist
+
+.build
+build

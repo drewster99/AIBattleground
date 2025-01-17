@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build AIBattleground",
+            "type": "shell",
+            "command": "xcodebuild",
+            "args": [
+                "-project",
+                "../AIBattleground.xcodeproj",
+                "-scheme",
+                "AIBattleground",
+                "-destination",
+                "platform=macOS,arch=arm64",
+                "-allowProvisioningUpdates",
+                "build"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+} 

@@ -1,0 +1,29 @@
+{
+  "configurations" : [
+    {
+      "id" : "1D8E3EAC-51C7-456A-A2D2-8535FA8AFE7E",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:AIBattleground.xcodeproj",
+      "identifier" : "4919D9C42D2F5713005FB17C",
+      "name" : "AIBattleground"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:AIBattleground.xcodeproj",
+        "identifier" : "4919DA7A2D31958A005FB17C",
+        "name" : "AIBattlegroundTests"
+      }
+    }
+  ],
+  "version" : 1
+}
