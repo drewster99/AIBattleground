@@ -1,0 +1,74 @@
+Hello. You are an expert in digital product design and marketing, and in public communications.. We've written a macOS app with a working name of "AI Battleground".  This is just a working name, so do not let it influence your decision making process. Below this text, I am going to paste the full text of the README.md file in the project, which provides a pretty fair and accurate summary of the project.  What I'd like you to do is help us pick a name for app.  It needs to be a good name.  Based on digital app marketing best practices, it should be a truly excellent name. My suggestions are to make a name that's not too long, is descriptive in some way, is memorable, and ideally, conveys the sense that it is both sort of fun to play with, but also a serious and helpful tool.  However, that's just my suggestion.  I am not an expert in marketing.  I'd like the app to be on the Mac App Store.  Please think carefully about your answer.  I think you should just pick a single name as an answer - your very best choice. Since you are an expert in product marketing and communications, I know you will choose well.  However, before you respond, pick your top 3 choices.  Then, for each choice, consider how the name would resonate with both technical and non-technical people, think about how well it conveys the various meanins intended, think about how it will look on the screen, think about how easy it will be ti find in the app store, and even think a bit about how you  might market it.  Once you've considered these things about these 3 app name choices, pick your very best one.  Respond with your very best app name and provide a brief narrative as to why you've chosen it.  The narrative should be short, but convincing.  If we pick your name, you will win the marketing contract, which is very lucrative for you and your company.  Do not lie about anything.
+
+Everything below is the README.md file:
+
+# AI Battleground
+
+AI Battleground is a macOS application that lets you test and compare different AI language models side by side. It provides a unified interface for interacting with multiple AI services and comparing their responses to the same prompts. Head-to-Head Model Combat - Send your AI LLM prompt to 40+ large language models to see how they all respond.  Supports OpenAI, Anthropic's Claude, Google Gemini, and Deepseek out of the box, plus you can add any others that support either the OpenAI or Anthropic (Claude) API.
+
+
+## Features
+
+### Service Management
+- Configure multiple AI services (OpenAI, Claude, DeepSeek, etc.)
+- Securely store API credentials in the macOS keychain
+- Automatic validation of service configurations
+- Visual indicators for service status and issues
+
+### Model Management
+- View available models from each configured service
+- Enable/disable specific models
+- Filter models by name, provider, or other attributes
+- Automatic model compatibility filtering
+
+### Challenge Mode
+- Send the same prompt to multiple AI models simultaneously
+- Compare responses side by side
+- Copy individual responses
+- Retry failed requests
+- Persistent prompt history
+
+## Getting Started
+
+1. Launch the app and navigate to the "Services" tab
+2. Add your AI service configurations:
+   - Click "Add Service"
+   - Choose a service provider (e.g., OpenAI)
+   - Enter your API key and other required information
+   - The app will validate your configuration
+
+3. Go to the "Models" tab to:
+   - View available models from your configured services
+   - Enable the models you want to test
+   - Filter models to find specific ones
+
+4. Use the "Challenge" tab to:
+   - Select which enabled models to test
+   - Enter your prompt
+   - Send the prompt to all selected models
+   - Compare their responses
+
+## Security
+
+- API keys are stored securely in the macOS keychain
+- Keys are never exposed in the UI after entry
+- Keychain items are shared across app instances using a keychain access group
+- No data is sent to external services except the AI providers you configure
+
+## Requirements
+
+- macOS 14.0 or later
+- Valid API keys for the services you want to test
+
+## Support
+
+For issues, feature requests, or contributions, please visit the project's GitHub repository.
+
+## License
+
+MIT License
+
+## Copyright
+
+Copyright (C) 2025 Nuclear Cyborg Corp
+
