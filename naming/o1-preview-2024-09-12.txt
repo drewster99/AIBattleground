@@ -1,0 +1,3 @@
+**App Name:** AI Arena
+
+I recommend "AI Arena" as the name for your macOS application. "AI Arena" is concise, memorable, and conveys the core functionality of your app—comparing AI language models side by side. The word "Arena" evokes a place where contenders showcase their abilities, highlighting the interactive and competitive aspects of testing multiple AI models simultaneously. This name appeals to both technical and non-technical users, suggesting a space that's both engaging and informative. It will stand out in the Mac App Store, is easy to search for, and looks professional on the screen. "AI Arena" effectively balances the fun of experimentation with the seriousness of an analytical tool, making it an excellent choice for your app.
