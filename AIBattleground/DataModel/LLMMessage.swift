@@ -1,14 +1,14 @@
 import Foundation
 import SwiftUI
 
-struct LLMMessage: Identifiable, Equatable, Codable {
+struct LLMMessage: Identifiable, Equatable, Codable, Hashable {
     let id: UUID
     let timestamp: Date
     var role: MessageRole
     var content: String
     var tokenCount: Int?
 
-    enum MessageRole: Identifiable, Equatable, Codable, RawRepresentable {
+    enum MessageRole: Identifiable, Equatable, Codable, Hashable, RawRepresentable {
         init?(rawValue: String) {
             switch rawValue {
             case "system": self = .system
@@ -52,6 +52,15 @@ struct LLMMessage: Identifiable, Equatable, Codable {
             case .other: return Color.gray
             }
         }
+
+        var sortRank: Int {
+            switch self {
+            case .system: 1
+            case .user: 0
+            case .assistant: 2
+            case .other: 3
+            }
+        }
     }
 
     init(
@@ -65,5 +74,9 @@ struct LLMMessage: Identifiable, Equatable, Codable {
         self.role = role
         self.content = content
         self.tokenCount = tokenCount
+    }
+
+    static func empty() -> LLMMessage {
+        .init(role: .user, content: "")
     }
 }

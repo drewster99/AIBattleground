@@ -4,10 +4,12 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var credentialManager: LLMCredentialKeyManager
     @State private var selectedTab: Tab? = .services
-    @StateObject private var messageListState = MessageListState(messages: [], isEditable: true)
+    @StateObject private var messageListState = MessageListState([], isEditable: true)
 
     private enum Tab {
-        case debug
+        case debugServices
+        case debugMessages
+        case debugSingleMessage
         case services
         case models
         case challenge
@@ -17,28 +19,29 @@ struct ContentView: View {
         NavigationView {
             List(selection: $selectedTab) {
                 Group {
-                    #if DEBUG
-                        NavigationLink {
-                            DebugServicesView()
-                        } label: {
-                            Label("Debug Services", systemImage: "ladybug.fill")
-                                .padding()
-                        }
-                        .tag(Tab.debug)
-                        NavigationLink {
-                            MessageListView(
-                                confirmButtonTitle: "Send to AI",
-                                onSubmit: { messages in
-                                    print("messages: \(messages)")
-                                }
-                            )
-                            .environmentObject(messageListState)
-                        } label: {
-                            Label("Debug Messages", systemImage: "message.fill")
-                                .padding()
-                        }
-                        .tag(Tab.debug)
-                    #endif
+#if DEBUG
+                    NavigationLink {
+                        DebugServicesView()
+                    } label: {
+                        Label("Debug Services", systemImage: "ladybug.fill")
+                            .padding()
+                    }
+                    .tag(Tab.debugServices)
+                    NavigationLink {
+                        DebugMessageListView()
+                    } label: {
+                        Label("Debug Messages", systemImage: "message.fill")
+                            .padding()
+                    }
+                    .tag(Tab.debugMessages)
+                    NavigationLink {
+                        DebugSingleMessageView()
+                    } label: {
+                        Label("Debug Single Message", systemImage: "message.fill")
+                            .padding()
+                    }
+                    .tag(Tab.debugSingleMessage)
+#endif
 
                     NavigationLink {
                         ManageServicesView()
@@ -69,6 +72,72 @@ struct ContentView: View {
             .frame(minWidth: 200)
             .listStyle(.sidebar)
             .navigationTitle("AI Battleground")
+        }
+    }
+}
+
+struct DebugMessageListView: View {
+    @StateObject private var messageListState = MessageListState([], isEditable: true)
+
+    var body: some View {
+        MessageListView(
+            confirmButtonTitle: "Send to AI",
+            onSubmit: { messages in
+                print("messages: \(messages)")
+            }
+        )
+        .environmentObject(messageListState)
+    }
+}
+
+struct DebugSingleMessageView: View {
+    @StateObject private var rolesManager = CustomRolesManager()
+    @State private var editingMessage = EditingMessageModel(rowMode: .edit, isEditable: true, message: LLMMessage.empty())
+    @State private var lastCallback: String = ""
+
+    var rowMode: MessageRowMode {
+        get { editingMessage.rowMode }
+        nonmutating set { editingMessage.rowMode = newValue }
+    }
+    var body: some View {
+        VStack {
+            MessageRow(editingMessage: $editingMessage,
+                       confirmButtonTitle: "Confirm") {
+                // onConfirm
+                lastCallback = "onConfirm"
+            } onCancel: {
+                lastCallback = "onCancel"
+            } onDelete: {
+                lastCallback = "onDelete"
+            } onCopy: {
+                lastCallback = "onCopy"
+            } onEditTapped: {
+                lastCallback = "onEditTapped"
+            }
+            .environmentObject(rolesManager)
+            Spacer()
+            
+
+            Text("Last callback: \(lastCallback)")
+            Text("Message: \(editingMessage.message.content)")
+                .background(.secondary)
+                .frame(minHeight: 100)
+                .frame(maxWidth: .infinity)
+                .padding()
+            Button("editing is: \(editingMessage.isEditable ? "ENABLED" : "DISABLED")") {
+                editingMessage.isEditable.toggle()
+            }
+            HStack {
+                Button("Edit") {
+                    rowMode = .edit
+                }
+                Button("Full") {
+                    rowMode = .full
+                }
+                Button("Compact") {
+                    rowMode = .compact
+                }
+            }
         }
     }
 }
