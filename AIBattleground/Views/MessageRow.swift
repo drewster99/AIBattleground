@@ -1,33 +1,45 @@
 import SwiftUI
 
-enum MessageRowMode {
+enum MessageRowMode: String, Codable, Equatable, Hashable, Identifiable {
+    /// brief summary
     case compact
+
+    /// fully expanded
     case full
+
+    /// fully expanded and edting
     case edit
+
+    var id: String { rawValue }
 }
 
 struct MessageRow: View {
-    @EnvironmentObject private var state: MessageListState
-    @Binding var message: LLMMessage
-    @Binding var mode: MessageRowMode
-    @State private var editingText: String = ""
-    
+    @EnvironmentObject private var rolesManager: CustomRolesManager
+    @Binding var editingMessage: EditingMessageModel
     let confirmButtonTitle: String
     let onConfirm: () -> Void
     let onCancel: () -> Void
+    let onDelete: () -> Void
     let onCopy: () -> Void
-    
+    let onEditTapped: () -> Void
+
+    @State private var editingText: String = ""
     @State private var showingCopyConfirmation = false
     @State private var copyConfirmationTask: Task<Void, Never>?
     @FocusState private var isTextFieldFocused: Bool
-    
+    @Namespace private var animation
+
+    var isEditable: Bool { editingMessage.isEditable }
+    var rowMode: MessageRowMode { $editingMessage.rowMode.wrappedValue }
+    var contentHasChanged: Bool { editingText != editingMessage.message.content }
+
     private func formatMessage(_ text: String) -> AttributedString {
         do {
             let options = AttributedString.MarkdownParsingOptions(
                 interpretedSyntax: .inlineOnlyPreservingWhitespace
             )
             var attributed = try AttributedString(markdown: text, options: options)
-            if case .other = message.role {
+            if case .other = editingMessage.message.role {
                 attributed.foregroundColor = .secondary
             }
             return attributed
@@ -35,213 +47,253 @@ struct MessageRow: View {
             return AttributedString(text)
         }
     }
-    
-    private func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
-        // Only handle key down phase
-        guard press.phase == .down else { return .ignored }
-        
-        switch (press.key, press.modifiers) {
-        case (.return, let mods) where mods.contains(.command):
-            handleConfirm()
-            return .handled
-        case (.return, let mods) where mods.contains(.shift):
-            handleConfirm()
-            return .handled
-        case (.escape, _):
-            onCancel()
-            return .handled
-        case (.tab, _):
-            let cursorPosition = editingText.count
-            editingText.insert(contentsOf: "    ", at: editingText.index(editingText.startIndex, offsetBy: cursorPosition))
-            return .handled
-        default:
-            return .ignored
-        }
-    }
-    
-    private func enterEditMode() {
-        editingText = message.content
-        isTextFieldFocused = true
-    }
-    
+
     private func handleConfirm() {
         let trimmedText = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedText.isEmpty {
-            withAnimation {
-                onConfirm()
-                state.removeMessage(message.id)
-            }
-        } else {
-            message.content = trimmedText
-            onConfirm()
+        if !trimmedText.isEmpty {
+            editingMessage.message.content = trimmedText
+            Task { @MainActor in onConfirm() }
         }
     }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if mode == .compact {
-                HStack(alignment: .top, spacing: 8) {
-                    RoleSelector(
-                        role: $message.role,
-                        isEditable: state.isEditable,
-                        onCustomRole: { newRole in
-                            state.addCustomRole(newRole)
-                            message.role = .other(newRole)
-                        }
-                    )
-                    
-                    HStack(spacing: 4) {
-                        Text(message.content.components(separatedBy: .newlines).first ?? "")
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                        
-                        if message.content.contains("\n") || 
-                           message.content.count > 100 {  // Show (more) if multiline or long
-                            Text("(more)")
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                        }
+
+    private func setRowMode(_ rowMode: MessageRowMode) {
+        var effectiveRowMode = rowMode
+        if rowMode == .edit && !isEditable {
+            effectiveRowMode = .full
+        }
+        if editingMessage.rowMode != effectiveRowMode {
+            withAnimation {
+                editingMessage.rowMode = effectiveRowMode
+            }
+        }
+    }
+
+    /// Displays the message role and allows user to change it
+    var roleSelector: some View {
+        RoleSelector(
+            role: $editingMessage.message.role
+        )
+        .opacity(editingMessage.rowMode == .edit ? 1.0 : 0.7)
+        .disabled(editingMessage.rowMode != .edit)
+    }
+
+    /// A button which copies the main content text to the clipboard
+    var copyButton: some View {
+        Button(action: {
+            NSPasteboard.general.clearContents()
+            let copiedContent = rowMode == .compact ? editingMessage.message.content : editingText
+            print("* Copy: \"\(copiedContent)\"")
+            NSPasteboard.general.setString(copiedContent, forType: .string)
+
+            onCopy()
+            showingCopyConfirmation = true
+
+            // Cancel any existing task
+            copyConfirmationTask?.cancel()
+
+            // Create new task
+            copyConfirmationTask = Task {
+                try? await Task.sleep(for: .seconds(2))
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        showingCopyConfirmation = false
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    mode = state.isEditable ? .edit : .full
+            }
+        }) {
+            if showingCopyConfirmation {
+                Image(systemName: "checkmark")
+                    .foregroundStyle(.green)
+                    .accessibilityLabel("Copied")
+            } else {
+                Image(systemName: "doc.on.doc")
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Copy message")
+            }
+        }
+        .frame(width: 44, height: 44)
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+    }
+
+    /// A pencil button that can be used to begin editing
+    var editButton: some View {
+        Button(action: {
+            setRowMode(.edit)
+        }, label: {
+            Image(systemName: "pencil")
+                .foregroundStyle(.secondary)
+                .opacity(editingMessage.isEditable ? 1.0 : 0.7)
+        })
+        .buttonStyle(.plain)
+        .disabled(!editingMessage.isEditable)
+    }
+
+    var trailingTools : some View {
+        VStack {
+            if editingMessage.rowMode != .edit {
+                Button(action: {
+                    editingMessage.rowMode = .edit
+                }, label: {
+                    Image(systemName: "pencil")
+                        .foregroundStyle(.secondary)
+                        .opacity(editingMessage.isEditable ? 1.0 : 0.7)
+                })
+                .buttonStyle(.plain)
+                .disabled(!editingMessage.isEditable)
+            }
+            Spacer()
+            copyButton
+        }
+    }
+
+    var bottomTools: some View {
+        HStack {
+            Spacer()
+            Button("Cancel") {
+                editingText = editingMessage.message.content
+                onCancel()
+            }
+            .buttonStyle(.bordered)
+            .keyboardShortcut(.escape, modifiers: [])
+            .accessibilityLabel("Cancel editing")
+            .opacity(contentHasChanged ? 0.7 : 1.0)
+            .disabled(!contentHasChanged)
+
+            Button("Save") {
+                print("doing confirm on \(editingMessage.debugDescription)... editingtext = \(editingText)")
+                handleConfirm()
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.return, modifiers: [.command])
+            .accessibilityLabel("Confirm changes")
+            .opacity(contentHasChanged ? 1.0 : 0.7)
+            .disabled(!contentHasChanged)
+        }
+    }
+
+    /// Compact 1-liner view
+    var compactView: some View {
+        HStack(spacing: 4) {
+            Text(editingMessage.message.content.components(separatedBy: .newlines).first ?? "")
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            if editingMessage.message.content.contains("\n") ||
+                editingMessage.message.content.count > 100 {  // Show (more) if multiline or long
+                Text("(more)")
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            print("Tapped row for \(editingMessage.debugDescription)")
+            editingMessage.rowMode = .full
+        }
+    }
+
+    /// Fully expanded editable text
+    var editView: some View {
+        TextEditor(text: $editingText)
+            .font(.body)
+            .frame(minHeight: 100)
+            .focusable()
+            .focused($isTextFieldFocused)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.2))
+            )
+            .accessibilityLabel("Message content")
+            .accessibilityHint("Enter your message")
+            .onSubmit {
+                print("onSubmit .. $editText = \(self.editingText)")
+            }
+            .overlay {
+                // Add a hidden button to handle option-r
+                Button("Next role") {
+                    if editingMessage.isEditable {
+                        editingMessage.message.role = rolesManager.nextRole(after: editingMessage.message.role)
+                    }
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("r", modifiers: [.command])
+                .hidden()
+            }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            if editingMessage.rowMode == .compact {
+                HStack(alignment: .top) {
+                    roleSelector
+                        .matchedGeometryEffect(id: "RoleSelector", in: animation)
+                    compactView
+                        .matchedGeometryEffect(id: "Content", in: animation, anchor: UnitPoint.topLeading)
+                    editButton
+                        .matchedGeometryEffect(id: "EditButton", in: animation)
+                }
+            } else if editingMessage.rowMode == .edit || editingMessage.rowMode == .full {
+                VStack(alignment: .leading) {
+                    roleSelector
+                        .matchedGeometryEffect(id: "RoleSelector", in: animation)
+                    HStack(alignment: .top) {
+                        VStack(spacing: 3) {
+                            ZStack(alignment: .bottomTrailing) {
+                                editView
+                                    .opacity(rowMode == .full || isEditable == false ? 0.7 : 1.0)
+                                    .disabled(rowMode == .full || isEditable == false)
+                                    .matchedGeometryEffect(id: "Content", in: animation, anchor: UnitPoint.topLeading)
+                                copyButton
+                            }
+                            bottomTools
+                                .opacity(rowMode == .full || isEditable == false ? 0.0 : 1.0)
+                        }
+                        editButton
+                            .opacity(rowMode == .full ? 1.0 : 0.0)
+                            .matchedGeometryEffect(id: "EditButton", in: animation)
+                    }
                 }
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top) {
-                        RoleSelector(
-                            role: $message.role,
-                            isEditable: state.isEditable,
-                            onCustomRole: { newRole in
-                                state.addCustomRole(newRole)
-                                message.role = .other(newRole)
-                            }
-                        )
-                        .opacity(state.isEditable ? 1.0 : 0.7)
-                        
-                        if mode == .edit {
-                            TextEditor(text: $editingText)
-                                .font(.body)
-                                .frame(minHeight: 100)
-                                .focusable()
-                                .focused($isTextFieldFocused)
-                                .onKeyPress { press in
-                                    handleKeyPress(press)
-                                }
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.secondary.opacity(0.2))
-                                )
-                                .accessibilityLabel("Message content")
-                                .accessibilityHint("Enter your message")
-                            
-                            // Add a hidden button to handle option-r
-                            Button(action: {
-                                if state.isEditable {
-                                    cycleRole()
-                                }
-                            }) {
-                                EmptyView()
-                            }
-                            .keyboardShortcut("r", modifiers: .option)
-                            .opacity(0)  // Hide the button but keep it functional
-                        } else {
-                            Text(formatMessage(message.content))
-                                .textSelection(.enabled)
-                                .accessibilityLabel("Message: \(message.content)")
-                        }
-                    }
-                    
-                    HStack(spacing: 8) {
-                        
-                        if mode == .edit {
-                            Button("Cancel") {
-                                onCancel()
-                            }
-                            .buttonStyle(.bordered)
-                            .keyboardShortcut(.escape, modifiers: [])
-                            .accessibilityLabel("Cancel editing")
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            onCopy()
-                            showingCopyConfirmation = true
-                            
-                            // Cancel any existing task
-                            copyConfirmationTask?.cancel()
-                            
-                            // Create new task
-                            copyConfirmationTask = Task {
-                                try? await Task.sleep(for: .seconds(2))
-                                if !Task.isCancelled {
-                                    await MainActor.run {
-                                        showingCopyConfirmation = false
-                                    }
-                                }
-                            }
-                        }) {
-                            if showingCopyConfirmation {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.green)
-                                    .accessibilityLabel("Copied")
-                            } else {
-                                Image(systemName: "doc.on.doc")
-                                    .foregroundStyle(.secondary)
-                                    .accessibilityLabel("Copy message")
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                        
-                        if mode == .edit {
-                            Button(confirmButtonTitle) {
-                                handleConfirm()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .keyboardShortcut(.return, modifiers: [.command])
-//                            .keyboardShortcut(.return, modifiers: [.command, .option])
-                            .accessibilityLabel("Confirm changes")
-                        }
+                // unknown - future mode
+                fatalError(">>> Unknown mode \(editingMessage.rowMode)")
+            }
+        }
+        .onChange(of: isEditable) { old, new in
+            print("@@@ onChange \(old) \(new)")
+            if new == false && rowMode == .edit {
+                setRowMode(.full)
+            }
+        }
+        .onChange(of: rowMode) { old, new in
+            print("@@@ onChange \(old) \(new)")
+            if new == .edit {
+                if !isEditable {
+                    Task { @MainActor in isTextFieldFocused = false }
+                } else {
+                    Task {
+                        @MainActor in isTextFieldFocused = true
+                        onEditTapped()
                     }
                 }
+            }
+            if (new == .compact || new == .full) && old == .edit {
+                isTextFieldFocused = false
+                handleConfirm()
             }
         }
         .padding()
-        .animation(.spring(), value: mode)
+        .animation(.spring(), value: editingMessage.rowMode)
         .transition(.move(edge: .bottom))
-        .onChange(of: mode) { _, newMode in
-            if newMode == .edit {
-                // Use Task to ensure focus happens after view update
-                Task { @MainActor in
-                    enterEditMode()
-                }
+        .onAppear {
+            editingText = editingMessage.message.content
+            if rowMode == .edit {
+                isTextFieldFocused = true
             }
         }
         .onDisappear {
             copyConfirmationTask?.cancel()
         }
-        .onChange(of: message.id) { _, _ in
-            // If the message changes (which can happen during removal),
-            // ensure we exit edit mode and clean up
-            if mode == .edit {
-                handleConfirm()
-                mode = .compact
-            }
-        }
     }
-    
-    private func cycleRole() {
-        switch message.role {
-        case .system: message.role = .user
-        case .user: message.role = .assistant
-        case .assistant: message.role = .system
-        case .other: message.role = .system
-        }
-    }
-} 
+}

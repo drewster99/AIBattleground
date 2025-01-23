@@ -1,9 +1,26 @@
 import SwiftUI
 
+class CustomRolesManager: ObservableObject {
+    @Published public var customRoles: Set<LLMMessage.MessageRole> = []
+
+    public func nextRole(after role: LLMMessage.MessageRole) -> LLMMessage.MessageRole {
+        // Update customRoles, if needed
+        let defaultRoles = [LLMMessage.MessageRole.user, .assistant, .system]
+        let otherRoles = customRoles.sorted { lhs, rhs in
+            lhs.rawValue < rhs.rawValue
+        }
+        var allRoles = defaultRoles
+        allRoles.append(contentsOf: otherRoles)
+        if let newIndex = allRoles.firstIndex(of: role)?.advanced(by: 1), allRoles.indices.contains(newIndex) {
+            return allRoles[newIndex]
+        } else {
+            return allRoles.first ?? .user
+        }
+    }
+}
 struct RoleSelector: View {
+    @EnvironmentObject private var rolesManager: CustomRolesManager
     @Binding var role: LLMMessage.MessageRole
-    let isEditable: Bool
-    let onCustomRole: (String) -> Void
     
     @State private var showingCustomRoleInput = false
     @State private var customRoleText = ""
@@ -24,26 +41,20 @@ struct RoleSelector: View {
             .frame(width: Self.fixedWidth + 16)  // Add padding to fixed width
             .background(role.backgroundColor.opacity(0.2))
             .foregroundStyle(role.backgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .opacity(isEditable ? 1.0 : 0.7)
-            .focusable()
-            .onTapGesture {
-                if isEditable {
-                    cycleRole()
-                }
-            }
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+//            .onTapGesture {
+//                role = rolesManager.nextRole(after: role)
+//            }
             .gesture(
-                TapGesture(count: 2)
-                    .onEnded {
-                        if isEditable {
-                            showingCustomRoleInput = true
-                        }
+                LongPressGesture()
+//                    .onChanged { _ in
+//                    }
+                    .onEnded {_ in 
+                        showingCustomRoleInput = true
                     }
                     .exclusively(before: TapGesture(count: 1)
                         .onEnded {
-                            if isEditable {
-                                cycleRole()
-                            }
+                            role = rolesManager.nextRole(after: role)
                         }
                     )
             )
@@ -52,10 +63,11 @@ struct RoleSelector: View {
                     TextField("Custom Role", text: $customRoleText)
                         .textFieldStyle(.roundedBorder)
                         .padding()
-                    
+
                     Button("Done") {
-                        if !customRoleText.isEmpty {
-                            onCustomRole(customRoleText)
+                        if !customRoleText.isEmpty, let newRole = LLMMessage.MessageRole(rawValue: customRoleText) {
+                            rolesManager.customRoles.insert(newRole)
+                            role = newRole
                         }
                         showingCustomRoleInput = false
                         customRoleText = ""
@@ -65,14 +77,5 @@ struct RoleSelector: View {
                 }
                 .frame(width: 200)
             }
-    }
-    
-    private func cycleRole() {
-        switch role {
-        case .system: role = .user
-        case .user: role = .assistant
-        case .assistant: role = .system
-        case .other: role = .system
-        }
     }
 } 
