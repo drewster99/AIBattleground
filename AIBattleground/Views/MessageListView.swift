@@ -25,13 +25,42 @@ struct MessageListView: View {
                     MessageRow(
                         editingMessage: editingMessage,
                         confirmButtonTitle: confirmButtonTitle,
-                        onConfirm: { handleConfirm(for: editingMessage) },
-                        onCancel: { handleCancel(for: editingMessage) },
-                        onDelete: { state.removeMessage(editingMessage.wrappedValue) },
+                        onConfirm: {
+                            print("confirm: ** wrapped \(editingMessage.wrappedValue.debugDescription)")
+                            let isEmpty = editingMessage.wrappedValue.message.content.isEmpty
+                            let isLastMessage = state.editingMessages.last?.id == editingMessage.wrappedValue.id
+
+                            if !isLastMessage || (isLastMessage && !isEmpty) {
+                                editingMessage.projectedValue.wrappedValue.rowMode = .compact
+                            } else {
+                                onSubmit(state.editingMessages.map(\.message))
+                            }
+                        },
+                        onCancel: {
+                            print("cancel: \(editingMessage)")
+                            if let lastMessage = state.editingMessages.last, editingMessage.id == lastMessage.id {
+                                // leave it editing
+                            } else {
+                                // collapse
+                                editingMessage.projectedValue.wrappedValue.rowMode = .compact
+                            }
+                        },
+                        onDelete: {
+//                            state.removeMessage(editingMessage.wrappedValue)
+                        },
                         onCopy: {
                             
                         },
-                        onEditTapped: { }
+                        onEditRequested: {
+                            state.beginEditing(editingMessage.wrappedValue.id)
+                        },
+                        onExpandRequested: {
+                            editingMessage.wrappedValue.rowMode = .full
+                        },
+                        onEditingBegan: {
+                            // this is really sort of an "onEditingBegan"
+                            print("Editing began for \(editingMessage.wrappedValue.debugDescription)")
+                        }
                     )
                     .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
                     .listRowSeparator(.hidden)
@@ -49,60 +78,6 @@ struct MessageListView: View {
             }
             .padding()
         }
-//        .onChange(of: state.editingMessages) { _, editingMessages in
-//            withAnimation {
-//                cleanupMessageModes()
-////                checkAndAddNewMessage(editingMessages.messag)
-//            }
-//        }
-//        .onAppear {
-//            // Set initial message to edit mode if it's the only message
-////            if state.messages.count == 1 {
-////                initializeNewMessageMode(state.messages[0].id)
-////            }
-//        }
-    }
-
-    private func handleConfirm(for editingMessage: Binding<EditingMessageModel>) {
-        print("confirm: ** wrapped \(editingMessage.wrappedValue.debugDescription)")
-        state.endEditing(editingMessage.wrappedValue)
-//        editingMessage.wrappedValue.rowMode = .compact
-//        if state.editingMessages.last?.id == editingMessage.wrappedValue.id {
-//                // append a new message
-////            print("* appending new")
-////            state.appendEmptyMessage()
-//        } else {
-//            if let lastIndex = state.editingMessages.indices.last {
-//                state.editingMessages[lastIndex].rowMode = .edit
-//                state.focusedMessageID = state.editingMessages[lastIndex].id
-//            }
-//        }
-//        if message.id != state.messages.last?.id {
-//            messageModes.removeValue(forKey: message.id)
-//        }
-    }
-
-    private func handleCancel(for editingMessage: Binding<EditingMessageModel>) {
-        print("cancel: \(editingMessage)")
-        if let lastMessage = state.editingMessages.last {
-            state.beginEditing(lastMessage)
-        }
-//        if message.id != state.messages.last?.id {
-//            messageModes.removeValue(forKey: message.id)
-//        }
-    }
-
-    private func cleanupMessageModes() {
-        print("clean up messages modes")
-//        let lastId = state.editingMessages.last?.id
-//        messageModes = messageModes.filter { messageId, _ in
-//            let exists = state.editingMessages.contains { $0.id == messageId }
-//            if exists && messageId == lastId {
-//                // Ensure last message mode is correct
-//                setEditMode(for: lastId!)
-//            }
-//            return exists
-//        }
     }
 
     private func finalizeAndSubmit() {
@@ -113,26 +88,8 @@ struct MessageListView: View {
             state.editingMessages.removeAll(where: { $0.id == last.id })
         }
 
-        cleanupMessageModes()
-
         withAnimation {
             onSubmit(state.editingMessages.map(\.message))
         }
-    }
-
-    private func checkAndAddNewMessage(_ messages: [LLMMessage]) {
-//        if messages.isEmpty {
-//            withAnimation(.spring()) {
-//                let newMessage = LLMMessage(role: .user, content: "")
-//                state.addMessage(newMessage)
-//                setEditMode(for: newMessage.id)
-//            }
-//        } else if messages.last?.content.trimmingCharacters(in: .whitespacesAndNewlines) != "" {
-//            withAnimation(.spring()) {
-//                let newMessage = LLMMessage(role: .user, content: "")
-//                state.addMessage(newMessage)
-//                setEditMode(for: newMessage.id)
-//            }
-//        }
     }
 }

@@ -21,17 +21,20 @@ struct MessageRow: View {
     let onCancel: () -> Void
     let onDelete: () -> Void
     let onCopy: () -> Void
-    let onEditTapped: () -> Void
+    let onEditRequested: () -> Void
+    let onExpandRequested: () -> Void
+    let onEditingBegan: () -> Void
 
     @State private var editingText: String = ""
     @State private var showingCopyConfirmation = false
     @State private var copyConfirmationTask: Task<Void, Never>?
     @FocusState private var isTextFieldFocused: Bool
     @Namespace private var animation
+    @State private var originalRole: LLMMessage.MessageRole?
 
     var isEditable: Bool { editingMessage.isEditable }
     var rowMode: MessageRowMode { $editingMessage.rowMode.wrappedValue }
-    var contentHasChanged: Bool { editingText != editingMessage.message.content }
+    var contentHasChanged: Bool { editingText != editingMessage.message.content || originalRole != editingMessage.message.role }
 
     private func formatMessage(_ text: String) -> AttributedString {
         do {
@@ -50,10 +53,9 @@ struct MessageRow: View {
 
     private func handleConfirm() {
         let trimmedText = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedText.isEmpty {
-            editingMessage.message.content = trimmedText
-            Task { @MainActor in onConfirm() }
-        }
+        editingMessage.message.content = trimmedText
+        originalRole = editingMessage.message.role
+        Task { @MainActor in onConfirm() }
     }
 
     private func setRowMode(_ rowMode: MessageRowMode) {
@@ -119,7 +121,11 @@ struct MessageRow: View {
     /// A pencil button that can be used to begin editing
     var editButton: some View {
         Button(action: {
-            setRowMode(.edit)
+            if isEditable {
+                onEditRequested()
+            } else {
+                onExpandRequested()
+            }
         }, label: {
             Image(systemName: "pencil")
                 .foregroundStyle(.secondary)
@@ -133,7 +139,11 @@ struct MessageRow: View {
         VStack {
             if editingMessage.rowMode != .edit {
                 Button(action: {
-                    editingMessage.rowMode = .edit
+                    if isEditable {
+                        onEditRequested()
+                    } else {
+                        onExpandRequested()
+                    }
                 }, label: {
                     Image(systemName: "pencil")
                         .foregroundStyle(.secondary)
@@ -152,6 +162,7 @@ struct MessageRow: View {
             Spacer()
             Button("Cancel") {
                 editingText = editingMessage.message.content
+                originalRole = editingMessage.message.role
                 onCancel()
             }
             .buttonStyle(.bordered)
@@ -189,8 +200,11 @@ struct MessageRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture {
-            print("Tapped row for \(editingMessage.debugDescription)")
-            editingMessage.rowMode = .full
+            if isEditable {
+                onEditRequested()
+            } else {
+                onExpandRequested()
+            }
         }
     }
 
@@ -260,6 +274,9 @@ struct MessageRow: View {
                 fatalError(">>> Unknown mode \(editingMessage.rowMode)")
             }
         }
+//        .onChange(of: editingMessage.message) {
+//            print("@@@ onChange of message \(editingMessage.message) originalRole: \(originalRole?.rawValue)")
+//        }
         .onChange(of: isEditable) { old, new in
             print("@@@ onChange \(old) \(new)")
             if new == false && rowMode == .edit {
@@ -274,7 +291,7 @@ struct MessageRow: View {
                 } else {
                     Task {
                         @MainActor in isTextFieldFocused = true
-                        onEditTapped()
+                        onEditingBegan()
                     }
                 }
             }
@@ -288,6 +305,7 @@ struct MessageRow: View {
         .transition(.move(edge: .bottom))
         .onAppear {
             editingText = editingMessage.message.content
+            originalRole = editingMessage.message.role
             if rowMode == .edit {
                 isTextFieldFocused = true
             }
