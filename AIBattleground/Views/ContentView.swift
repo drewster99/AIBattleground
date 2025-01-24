@@ -4,7 +4,6 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var credentialManager: LLMCredentialKeyManager
     @State private var selectedTab: Tab? = .services
-    @StateObject private var messageListState = MessageListState([], isEditable: true)
 
     private enum Tab {
         case debugServices
@@ -77,6 +76,7 @@ struct ContentView: View {
 }
 
 struct DebugMessageListView: View {
+    @StateObject private var rolesManager = CustomRolesManager()
     @StateObject private var messageListState = MessageListState([], isEditable: true)
 
     var body: some View {
@@ -87,6 +87,7 @@ struct DebugMessageListView: View {
             }
         )
         .environmentObject(messageListState)
+        .environmentObject(rolesManager)
     }
 }
 
@@ -111,8 +112,14 @@ struct DebugSingleMessageView: View {
                 lastCallback = "onDelete"
             } onCopy: {
                 lastCallback = "onCopy"
-            } onEditTapped: {
-                lastCallback = "onEditTapped"
+            } onEditRequested: {
+                lastCallback = "onEditRequested"
+                rowMode = .edit
+            } onExpandRequested: {
+                lastCallback = "onExpandRequested"
+                rowMode = .full
+            } onEditingBegan: {
+                lastCallback = "onEditingBegan"
             }
             .environmentObject(rolesManager)
             Spacer()
