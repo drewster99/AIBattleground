@@ -77,7 +77,7 @@ struct ContentView: View {
 
 struct DebugMessageListView: View {
     @StateObject private var rolesManager = CustomRolesManager()
-    @StateObject private var messageListState = MessageListState([], isEditable: true)
+    @StateObject private var messageListState = MessageListState([.empty()], isEditable: true)
 
     var body: some View {
         MessageListView(
@@ -93,12 +93,14 @@ struct DebugMessageListView: View {
 
 struct DebugSingleMessageView: View {
     @StateObject private var rolesManager = CustomRolesManager()
-    @State private var editingMessage = EditingMessageModel(rowMode: .edit, isEditable: true, message: LLMMessage.empty())
+    @State private var editingMessage = EditingMessageModel(rowMode: .compact, isEditable: true, message: LLMMessage.empty())
     @State private var lastCallback: String = ""
 
-    var rowMode: MessageRowMode {
-        get { editingMessage.rowMode }
-        nonmutating set { editingMessage.rowMode = newValue }
+    var rowMode: MessageDisplayStyle {
+        get { editingMessage.preferredDisplayStyle }
+        nonmutating set {
+            editingMessage.preferredDisplayStyle = newValue
+        }
     }
     var body: some View {
         VStack {
@@ -106,6 +108,9 @@ struct DebugSingleMessageView: View {
                        confirmButtonTitle: "Confirm") {
                 // onConfirm
                 lastCallback = "onConfirm"
+//                withAnimation {
+//                    editingMessage.preferredDisplayStyle = .compact
+//                }
             } onCancel: {
                 lastCallback = "onCancel"
             } onDelete: {
@@ -114,10 +119,14 @@ struct DebugSingleMessageView: View {
                 lastCallback = "onCopy"
             } onEditRequested: {
                 lastCallback = "onEditRequested"
-                rowMode = .edit
+//                withAnimation {
+//                    rowMode = .edit
+//                }
             } onExpandRequested: {
                 lastCallback = "onExpandRequested"
-                rowMode = .full
+//                withAnimation {
+//                    rowMode = .full
+//                }
             } onEditingBegan: {
                 lastCallback = "onEditingBegan"
             }
