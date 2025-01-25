@@ -50,7 +50,7 @@ class MessageListState: ObservableObject {
                 }
 
                 guard !areAnyRowsEditing else { return }
-                
+
                 if editingMessages.isEmpty {
                     print("No messages.  Appending an empty one.")
                     appendEmptyMessage()
@@ -74,17 +74,14 @@ class MessageListState: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
 
     public func appendEmptyMessage() {
-        DispatchQueue.main.async {
-            let newEmptyMessage = EditingMessageModel.empty()
-            print("Append empty message: \(newEmptyMessage.debugDescription)")
-            self.editingMessages.append(newEmptyMessage)
-            self.beginEditing(newEmptyMessage.id)
-        }
+        let newEmptyMessage = EditingMessageModel.empty()
+        print("Append empty message: \(newEmptyMessage.debugDescription)")
+        self.editingMessages.append(newEmptyMessage)
+        self.beginEditing(newEmptyMessage.id)
     }
 
     public func endAllEditing() {
         print("End all editing")
-        let finalIndex = editingMessages.indices.last
         for index in editingMessages.indices {
             if editingMessages[index].rowMode == .edit {
                 print("Ending editing for \(editingMessages[index])")
@@ -94,17 +91,14 @@ class MessageListState: ObservableObject {
     }
 
     public func beginEditing(_ messageID: EditingMessageModel.ID) {
-        DispatchQueue.main.async { [self] in
-            print("Begin editing \(messageID)")
-            let finalIndex = editingMessages.indices.last
-            if let index = editingMessages.firstIndex(where: { $0.id == messageID }) {
-                print("Found message id \(messageID) at index \(index)")
-                if editingMessages[index].rowMode != .edit && editingMessages[index].isEditable {
-                    print("About to edit \(editingMessages[index].debugDescription) after ending editing")
-                    endAllEditing()
-                    print("Done ending editing.  Setting to rowMode edit: \(editingMessages[index].debugDescription)")
-                    editingMessages[index].rowMode = .edit
-                }
+        print("Begin editing \(messageID)")
+        if let index = editingMessages.firstIndex(where: { $0.id == messageID }) {
+            print("Found message id \(messageID) at index \(index)")
+            if editingMessages[index].rowMode != .edit && editingMessages[index].isEditable {
+                print("About to edit \(editingMessages[index].debugDescription) after ending editing")
+                endAllEditing()
+                print("Done ending editing.  Setting to rowMode edit: \(editingMessages[index].debugDescription)")
+                editingMessages[index].rowMode = .edit
             }
         }
     }

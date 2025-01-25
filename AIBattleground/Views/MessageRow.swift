@@ -33,7 +33,7 @@ struct MessageRow: View {
     @State private var originalRole: LLMMessage.MessageRole?
 
     var isEditable: Bool { editingMessage.isEditable }
-    var rowMode: MessageRowMode { $editingMessage.rowMode.wrappedValue }
+    var rowMode: MessageRowMode { editingMessage.rowMode }
     var contentHasChanged: Bool { editingText != editingMessage.message.content || originalRole != editingMessage.message.role }
 
     private func formatMessage(_ text: String) -> AttributedString {
@@ -122,6 +122,7 @@ struct MessageRow: View {
     var editButton: some View {
         Button(action: {
             if isEditable {
+                print("edit tapped")
                 onEditRequested()
             } else {
                 onExpandRequested()
@@ -274,17 +275,17 @@ struct MessageRow: View {
                 fatalError(">>> Unknown mode \(editingMessage.rowMode)")
             }
         }
-//        .onChange(of: editingMessage.message) {
-//            print("@@@ onChange of message \(editingMessage.message) originalRole: \(originalRole?.rawValue)")
-//        }
+        .onChange(of: editingMessage.message) {
+            print("@@@ onChange of message \(editingMessage.message) originalRole: \(originalRole?.rawValue)")
+        }
         .onChange(of: isEditable) { old, new in
-            print("@@@ onChange \(old) \(new)")
+            print("@@@ onChange \(editingMessage.debugDescription) isEditable \(old) --> \(new)")
             if new == false && rowMode == .edit {
                 setRowMode(.full)
             }
         }
         .onChange(of: rowMode) { old, new in
-            print("@@@ onChange \(old) \(new)")
+            print("@@@ onChange \(editingMessage.debugDescription) rowMode \(old) --> \(new)")
             if new == .edit {
                 if !isEditable {
                     Task { @MainActor in isTextFieldFocused = false }
@@ -304,6 +305,7 @@ struct MessageRow: View {
         .animation(.spring(), value: editingMessage.rowMode)
         .transition(.move(edge: .bottom))
         .onAppear {
+            print("@@ onAppear \(editingMessage.debugDescription)")
             editingText = editingMessage.message.content
             originalRole = editingMessage.message.role
             if rowMode == .edit {
