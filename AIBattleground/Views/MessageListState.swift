@@ -4,12 +4,12 @@ import Combine
 
 struct EditingMessageModel: Codable, Identifiable, Equatable, Hashable {
     var id: LLMMessage.ID { message.id }
-    var rowMode: MessageRowMode = .compact
+    var preferredDisplayStyle: MessageDisplayStyle = .compact
     var isEditable: Bool = true
     var message: LLMMessage
 
-    public init(rowMode: MessageRowMode, isEditable: Bool, message: LLMMessage) {
-        self.rowMode = rowMode
+    public init(rowMode: MessageDisplayStyle, isEditable: Bool, message: LLMMessage) {
+        self.preferredDisplayStyle = rowMode
         self.isEditable = isEditable
         self.message = message
     }
@@ -21,7 +21,7 @@ struct EditingMessageModel: Codable, Identifiable, Equatable, Hashable {
 
     public var debugDescription: String {
         let id = "\(id)".suffix(5)
-        return "id: \(id), rowMode=\(rowMode.id): [\(message.role.rawValue)] \"\(message.content)\""
+        return "id: \(id), rowMode=\(preferredDisplayStyle.id): [\(message.role.rawValue)] \"\(message.content)\""
     }
 
     public static func empty() -> Self {
@@ -34,74 +34,79 @@ class MessageListState: ObservableObject {
     @Published var editingMessages: [EditingMessageModel] = []
 
     private var areAnyRowsEditing: Bool {
-        editingMessages.reduce(false) { $0 || $1.rowMode == .edit }
+        editingMessages.reduce(false) { $0 || $1.preferredDisplayStyle == .edit }
     }
 
     public init(_ messages: [LLMMessage], isEditable: Bool = true) {
-
-        $editingMessages
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] oldValue in
-                guard let self else { return }
-
-                print("* SINK: \(editingMessages.count) messages (was \(editingMessages.count)")
-                for message in editingMessages {
-                    print("* SINK:    \(message.debugDescription)")
-                }
-
-                guard !areAnyRowsEditing else { return }
-
-                if editingMessages.isEmpty {
-                    print("No messages.  Appending an empty one.")
-                    appendEmptyMessage()
-                } else if let finalMessage = editingMessages.last {
-                    if finalMessage.message.content.isEmpty {
-                        print("Final message has empty content.  Beginning editing on it \(finalMessage.debugDescription)")
-                        beginEditing(finalMessage.id)
-                    } else {
-                        print("Final message DOES have content.  Appending empty one.")
-                        appendEmptyMessage()
-                    }
-                } else {
-                    fatalError("Should not happen.  Either the list is empty or we have a final message")
-                }
-            }
-            .store(in: &cancellables)
+//        $editingMessages
+//            .receive(on: DispatchQueue.main)
+//            .sink { [weak self] oldValue in
+//                guard let self else { return }
+//
+//                print("* SINK: \(editingMessages.count) messages (was \(editingMessages.count))")
+//                for message in editingMessages {
+//                    print("* SINK:    \(message.debugDescription)")
+//                }
+//
+////                guard !areAnyRowsEditing else { return }
+//
+////                if editingMessages.isEmpty {
+////                    print("No messages.  Appending an empty one.")
+////                    appendEmptyMessage()
+////                } else if let finalMessage = editingMessages.last {
+////                    if finalMessage.message.content.isEmpty {
+////                        print("Final message has empty content.  Beginning editing on it \(finalMessage.debugDescription)")
+////                        beginEditing(finalMessage.id)
+////                    } else {
+////                        print("Final message DOES have content.  Appending empty one.")
+////                        appendEmptyMessage()
+////                    }
+////                } else {
+////                    fatalError("Should not happen.  Either the list is empty or we have a final message")
+////                }
+//            }
+//            .store(in: &cancellables)
 
         self.editingMessages = messages.map({ EditingMessageModel.init($0, isEditable: isEditable) })
     }
 
     private var cancellables: Set<AnyCancellable> = []
-
-    public func appendEmptyMessage() {
-        let newEmptyMessage = EditingMessageModel.empty()
-        print("Append empty message: \(newEmptyMessage.debugDescription)")
-        self.editingMessages.append(newEmptyMessage)
-        self.beginEditing(newEmptyMessage.id)
-    }
-
-    public func endAllEditing() {
-        print("End all editing")
-        for index in editingMessages.indices {
-            if editingMessages[index].rowMode == .edit {
-                print("Ending editing for \(editingMessages[index])")
-                editingMessages[index].rowMode = .compact
-            }
-        }
-    }
-
-    public func beginEditing(_ messageID: EditingMessageModel.ID) {
-        print("Begin editing \(messageID)")
-        if let index = editingMessages.firstIndex(where: { $0.id == messageID }) {
-            print("Found message id \(messageID) at index \(index)")
-            if editingMessages[index].rowMode != .edit && editingMessages[index].isEditable {
-                print("About to edit \(editingMessages[index].debugDescription) after ending editing")
-                endAllEditing()
-                print("Done ending editing.  Setting to rowMode edit: \(editingMessages[index].debugDescription)")
-                editingMessages[index].rowMode = .edit
-            }
-        }
-    }
+//
+//    public func appendEmptyMessage() {
+//        let newEmptyMessage = EditingMessageModel.empty()
+//        print("Append empty message: \(newEmptyMessage.debugDescription)")
+//        withAnimation {
+//            self.editingMessages.append(newEmptyMessage)
+//        }
+//        self.beginEditing(newEmptyMessage.id)
+//    }
+//
+//    public func endAllEditing() {
+//        print("End all editing")
+//        withAnimation {
+//            for index in editingMessages.indices {
+//                if editingMessages[index].rowMode == .edit {
+//                    print("Ending editing for \(editingMessages[index])")
+//                    editingMessages[index].rowMode = .compact
+//                }
+//            }
+//        }
+//    }
+//
+//    public func beginEditing(_ messageID: EditingMessageModel.ID) {
+//        print("Begin editing \(messageID)")
+//        if let index = editingMessages.firstIndex(where: { $0.id == messageID }) {
+//            print("Found message id \(messageID) at index \(index)")
+//            if editingMessages[index].rowMode != .edit && editingMessages[index].isEditable {
+//                print("About to edit \(editingMessages[index].debugDescription) after ending editing")
+////                endAllEditing()
+//                print("Done ending editing.  Setting to rowMode edit: \(editingMessages[index].debugDescription)")
+//                withAnimation {
+//                    editingMessages[index].rowMode = .edit
+//                }
+//            }
+//        }
+//    }
 }
 
 extension Set where Element == LLMMessage.MessageRole {

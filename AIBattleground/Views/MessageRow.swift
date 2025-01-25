@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum MessageRowMode: String, Codable, Equatable, Hashable, Identifiable {
+enum MessageDisplayStyle: String, Codable, Equatable, Hashable, Identifiable {
     /// brief summary
     case compact
 
@@ -25,6 +25,8 @@ struct MessageRow: View {
     let onExpandRequested: () -> Void
     let onEditingBegan: () -> Void
 
+    @State private var displayStyle: MessageDisplayStyle = .compact
+    @State private var isEditing: Bool = false
     @State private var editingText: String = ""
     @State private var showingCopyConfirmation = false
     @State private var copyConfirmationTask: Task<Void, Never>?
@@ -33,7 +35,6 @@ struct MessageRow: View {
     @State private var originalRole: LLMMessage.MessageRole?
 
     var isEditable: Bool { editingMessage.isEditable }
-    var rowMode: MessageRowMode { editingMessage.rowMode }
     var contentHasChanged: Bool { editingText != editingMessage.message.content || originalRole != editingMessage.message.role }
 
     private func formatMessage(_ text: String) -> AttributedString {
@@ -51,22 +52,40 @@ struct MessageRow: View {
         }
     }
 
-    private func handleConfirm() {
-        let trimmedText = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        editingMessage.message.content = trimmedText
-        originalRole = editingMessage.message.role
-        Task { @MainActor in onConfirm() }
+    private func handleEditRequest() {
+        guard isEditable else { return }
+        guard !isEditing else { return }
+        isEditing = true
+        onEditRequested()
     }
 
-    private func setRowMode(_ rowMode: MessageRowMode) {
-        var effectiveRowMode = rowMode
-        if rowMode == .edit && !isEditable {
-            effectiveRowMode = .full
-        }
-        if editingMessage.rowMode != effectiveRowMode {
-            withAnimation {
-                editingMessage.rowMode = effectiveRowMode
+    private func handleCancel() {
+        guard isEditing else { return }
+        print(">> handleCancel")
+        withAnimation {
+            editingText = editingMessage.message.content
+            if let originalRole {
+                editingMessage.message.role = originalRole
             }
+//            isTextFieldFocused = false
+            isEditing = false
+                            onCancel()
+        }
+    }
+
+    private func handleConfirm() {
+        guard isEditing else { return }
+        print(">> handleConfirm")
+        withAnimation {
+            let trimmedText = editingText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if editingMessage.message.content != trimmedText {
+                editingMessage.message.content = trimmedText
+                editingText = trimmedText
+            }
+            originalRole = editingMessage.message.role
+            isTextFieldFocused = false
+            isEditing = false
+            onConfirm()
         }
     }
 
@@ -75,15 +94,15 @@ struct MessageRow: View {
         RoleSelector(
             role: $editingMessage.message.role
         )
-        .opacity(editingMessage.rowMode == .edit ? 1.0 : 0.7)
-        .disabled(editingMessage.rowMode != .edit)
+        .opacity(isEditable && displayStyle == .edit ? 1.0 : 0.7)
+        .disabled(!(isEditable && displayStyle == .edit))
     }
 
     /// A button which copies the main content text to the clipboard
     var copyButton: some View {
         Button(action: {
             NSPasteboard.general.clearContents()
-            let copiedContent = rowMode == .compact ? editingMessage.message.content : editingText
+            let copiedContent = displayStyle == .compact ? editingMessage.message.content : editingText
             print("* Copy: \"\(copiedContent)\"")
             NSPasteboard.general.setString(copiedContent, forType: .string)
 
@@ -121,56 +140,26 @@ struct MessageRow: View {
     /// A pencil button that can be used to begin editing
     var editButton: some View {
         Button(action: {
-            if isEditable {
-                print("edit tapped")
-                onEditRequested()
-            } else {
-                onExpandRequested()
-            }
+            handleEditRequest()
         }, label: {
             Image(systemName: "pencil")
                 .foregroundStyle(.secondary)
                 .opacity(editingMessage.isEditable ? 1.0 : 0.7)
         })
         .buttonStyle(.plain)
+        .accessibilityLabel("Edit message")
         .disabled(!editingMessage.isEditable)
-    }
-
-    var trailingTools : some View {
-        VStack {
-            if editingMessage.rowMode != .edit {
-                Button(action: {
-                    if isEditable {
-                        onEditRequested()
-                    } else {
-                        onExpandRequested()
-                    }
-                }, label: {
-                    Image(systemName: "pencil")
-                        .foregroundStyle(.secondary)
-                        .opacity(editingMessage.isEditable ? 1.0 : 0.7)
-                })
-                .buttonStyle(.plain)
-                .disabled(!editingMessage.isEditable)
-            }
-            Spacer()
-            copyButton
-        }
     }
 
     var bottomTools: some View {
         HStack {
             Spacer()
             Button("Cancel") {
-                editingText = editingMessage.message.content
-                originalRole = editingMessage.message.role
-                onCancel()
+                handleCancel()
             }
             .buttonStyle(.bordered)
             .keyboardShortcut(.escape, modifiers: [])
             .accessibilityLabel("Cancel editing")
-            .opacity(contentHasChanged ? 0.7 : 1.0)
-            .disabled(!contentHasChanged)
 
             Button("Save") {
                 print("doing confirm on \(editingMessage.debugDescription)... editingtext = \(editingText)")
@@ -200,9 +189,11 @@ struct MessageRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+        .accessibilityLabel("Message preview")
+        .accessibilityHint("Tap to \(isEditable ? "edit" : "expand")")
         .onTapGesture {
             if isEditable {
-                onEditRequested()
+                handleEditRequest()
             } else {
                 onExpandRequested()
             }
@@ -238,9 +229,48 @@ struct MessageRow: View {
             }
     }
 
+    func updateDisplayStyleAfterEditing() {
+        var newStyle: MessageDisplayStyle = displayStyle
+        switch isEditable {
+        case true:
+            // we are now editable (and weren't before)
+            newStyle = editingMessage.preferredDisplayStyle
+
+        case false:
+            // we are not editable
+            if isEditing {
+                if contentHasChanged {
+                    handleConfirm()
+                } else {
+                    handleCancel()
+                }
+
+                if editingMessage.preferredDisplayStyle == .compact {
+                    newStyle = .compact
+                } else {
+                    newStyle = .full
+                }
+            } else {
+                if editingMessage.preferredDisplayStyle != .edit {
+                    newStyle = editingMessage.preferredDisplayStyle
+                }
+            }
+        }
+
+        if newStyle != displayStyle {
+            print("updateDisplayStyleAfterEditing (isEditing=\(isEditing), isEditable=\(isEditable), preferred=\(editingMessage.preferredDisplayStyle):  \(displayStyle) -> \(newStyle)")
+            withAnimation {
+                displayStyle = newStyle
+            }
+        } else {
+            print("updatedDisplayStyleAfterEditing (isEditing=\(isEditing), isEditable=\(isEditable), preferred=\(editingMessage.preferredDisplayStyle): unchanged \(displayStyle)")
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading) {
-            if editingMessage.rowMode == .compact {
+        Self._printChanges()
+        return VStack(alignment: .leading) {
+            if displayStyle == .compact {
                 HStack(alignment: .top) {
                     roleSelector
                         .matchedGeometryEffect(id: "RoleSelector", in: animation)
@@ -249,7 +279,7 @@ struct MessageRow: View {
                     editButton
                         .matchedGeometryEffect(id: "EditButton", in: animation)
                 }
-            } else if editingMessage.rowMode == .edit || editingMessage.rowMode == .full {
+            } else if displayStyle == .edit || displayStyle == .full {
                 VStack(alignment: .leading) {
                     roleSelector
                         .matchedGeometryEffect(id: "RoleSelector", in: animation)
@@ -257,22 +287,33 @@ struct MessageRow: View {
                         VStack(spacing: 3) {
                             ZStack(alignment: .bottomTrailing) {
                                 editView
-                                    .opacity(rowMode == .full || isEditable == false ? 0.7 : 1.0)
-                                    .disabled(rowMode == .full || isEditable == false)
+                                    .opacity(displayStyle == .full || isEditable == false ? 0.7 : 1.0)
+                                    .disabled(displayStyle == .full || isEditable == false)
                                     .matchedGeometryEffect(id: "Content", in: animation, anchor: UnitPoint.topLeading)
                                 copyButton
                             }
                             bottomTools
-                                .opacity(rowMode == .full || isEditable == false ? 0.0 : 1.0)
+                                .opacity(displayStyle == .full || isEditable == false ? 0.0 : 1.0)
                         }
                         editButton
-                            .opacity(rowMode == .full ? 1.0 : 0.0)
+                            .opacity(displayStyle == .full ? 1.0 : 0.0)
                             .matchedGeometryEffect(id: "EditButton", in: animation)
                     }
                 }
             } else {
                 // unknown - future mode
-                fatalError(">>> Unknown mode \(editingMessage.rowMode)")
+                fatalError(">>> Unknown displayStyle \(displayStyle)")
+            }
+        }
+        .padding(.horizontal)
+        .animation(.easeInOut(duration: 5), value: displayStyle)
+        .transition(.move(edge: .bottom))
+        .onChange(of: isEditing) {
+            switch isEditing {
+            case true:
+                displayStyle = .edit
+            case false:
+                updateDisplayStyleAfterEditing()
             }
         }
         .onChange(of: editingMessage.message) {
@@ -280,11 +321,12 @@ struct MessageRow: View {
         }
         .onChange(of: isEditable) { old, new in
             print("@@@ onChange \(editingMessage.debugDescription) isEditable \(old) --> \(new)")
-            if new == false && rowMode == .edit {
-                setRowMode(.full)
-            }
         }
-        .onChange(of: rowMode) { old, new in
+        .onChange(of: isEditable) {
+            print("@@@ onChange \(editingMessage.debugDescription) isEditable --> \(isEditable)")
+            updateDisplayStyleAfterEditing()
+        }
+        .onChange(of: displayStyle) { old, new in
             print("@@@ onChange \(editingMessage.debugDescription) rowMode \(old) --> \(new)")
             if new == .edit {
                 if !isEditable {
@@ -297,20 +339,21 @@ struct MessageRow: View {
                 }
             }
             if (new == .compact || new == .full) && old == .edit {
-                isTextFieldFocused = false
                 handleConfirm()
             }
         }
-        .padding()
-        .animation(.spring(), value: editingMessage.rowMode)
-        .transition(.move(edge: .bottom))
         .onAppear {
             print("@@ onAppear \(editingMessage.debugDescription)")
             editingText = editingMessage.message.content
             originalRole = editingMessage.message.role
-            if rowMode == .edit {
-                isTextFieldFocused = true
-            }
+//            if editingMessage.isEditable {
+//
+//            }
+//            displayStyle = editingMessage.preferredDisplayStyle
+
+//            if displayStyle == .edit {
+//                isTextFieldFocused = true
+//            }
         }
         .onDisappear {
             copyConfirmationTask?.cancel()

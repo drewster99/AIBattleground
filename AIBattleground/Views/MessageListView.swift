@@ -12,18 +12,21 @@ struct MessageListView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Note to self:
-            //   If you use List directly, like this:
-            //     List($state.editingMessages, id: \.id) { editingMessage in ...
-            //   Each closure is just given the editingMessage structs -- not bindings, interestingly
-            List {
-                if state.editingMessages.isEmpty {
-                    Text("No messages")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .listRowBackground(Color.clear)
-                }
+        ScrollView {
+            VStack(spacing: 0) {
+                // Note to self -- using List seems to ruin lives and cause weird blinky animations,
+                // presumably from something getting reinitialized.
+                // Note to self:
+                //   If you use List directly, like this:
+                //     List($state.editingMessages, id: \.id) { editingMessage in ...
+                //   Each closure is just given the editingMessage structs -- not bindings, interestingly
+                //            List {
+//                if state.editingMessages.isEmpty {
+//                    Text("No messages")
+//                        .foregroundStyle(.secondary)
+//                        .frame(maxWidth: .infinity, alignment: .center)
+//                        .listRowBackground(Color.clear)
+//                }
 
                 // Note to self:
                 //   When this line below looked like this:
@@ -35,70 +38,109 @@ struct MessageListView: View {
                         editingMessage: editingMessage,
                         confirmButtonTitle: confirmButtonTitle,
                         onConfirm: {
-                            print("confirm: ** wrapped \(editingMessage.wrappedValue.debugDescription)")
-                            let isEmpty = editingMessage.wrappedValue.message.content.isEmpty
-                            let isLastMessage = state.editingMessages.last?.id == editingMessage.wrappedValue.id
-
-                            if !isLastMessage || (isLastMessage && !isEmpty) {
-                                editingMessage.projectedValue.wrappedValue.rowMode = .compact
-                            } else {
-                                onSubmit(state.editingMessages.map(\.message))
-                            }
+                            print("onConfirm: ** wrapped \(editingMessage.wrappedValue.debugDescription)")
+//                            withAnimation {
+//                                editingMessage.wrappedValue.rowDisplayStyle = .compact
+//                            }
+//                            let isEmpty = editingMessage.wrappedValue.message.content.isEmpty
+//                            let isLastMessage = state.editingMessages.last?.id == editingMessage.wrappedValue.id
+//
+//                            if !isLastMessage || (isLastMessage && !isEmpty) {
+//                                withAnimation {
+//                                    editingMessage.rowMode.wrappedValue = .compact
+//                                }
+//                            } else {
+//                                onSubmit(state.editingMessages.map(\.message))
+//                            }
                         },
                         onCancel: {
-                            print("cancel: \(editingMessage)")
-                            if let lastMessage = state.editingMessages.last, editingMessage.id == lastMessage.id {
-                                // leave it editing
-                            } else {
-                                // collapse
-                                editingMessage.projectedValue.wrappedValue.rowMode = .compact
-                            }
+                            print("onCancel: \(editingMessage)")
+//                            if let lastMessage = state.editingMessages.last, editingMessage.id == lastMessage.id {
+//                                // leave it editing
+//                            } else {
+//                                // collapse
+////                                withAnimation {
+////                                    editingMessage.rowMode.wrappedValue = .compact
+////                                }
+//                                // In this form, everything blinks and jumps as if just being added to the view.
+//                                // That's dumb.
+//                                // withAnimation {
+//                                //     editingMessage.projectedValue.wrappedValue.rowMode = .compact
+//                                // }
+//
+//                                // In this form, nothing blinky happens, but animation doesn't happen either
+//                                //                                 withAnimation {
+//                                //                                     editingMessage.rowMode.wrappedValue = .compact
+//                                //                                 }
+//                            }
                         },
                         onDelete: {
-//                            state.removeMessage(editingMessage.wrappedValue)
+                            //                            state.removeMessage(editingMessage.wrappedValue)
                         },
                         onCopy: {
-                            
+
                         },
                         onEditRequested: {
-                            state.beginEditing(editingMessage.wrappedValue.id)
+                            print("onEditRequested")
+//                            withAnimation {
+//                                editingMessage.wrappedValue.rowDisplayStyle = .edit
+//                            }
+                            // This still causes blinkage.  Why?  The one above in the onCancel does not.
+//                            withAnimation {
+//                                editingMessage.rowMode.wrappedValue = .edit
+                                //                                state.beginEditing(editingMessage.wrappedValue.id)
+//                            }
+                            // This form causes blinky garbage - presumably because we're taking
+                            // the wrappedValue of editingMessage, causing the entire thing to be
+                            // changed?
+                            // withAnimation {
+                            //     editingMessage.wrappedValue.rowMode = .edit
+                            //                          //       state.beginEditing(editingMessage.wrappedValue.id)
+                            // }
                         },
                         onExpandRequested: {
-                            editingMessage.wrappedValue.rowMode = .full
+                            print("onExpandRequested")
+//                            withAnimation {
+//                                editingMessage.wrappedValue.rowDisplayStyle = .full
+//                            }
+//                            withAnimation {
+//                                editingMessage.rowMode.wrappedValue = .full
+//                            }
                         },
                         onEditingBegan: {
-                            // this is really sort of an "onEditingBegan"
-                            print("Editing began for \(editingMessage.wrappedValue.debugDescription)")
+                            print("onEditingBegan for \(editingMessage.wrappedValue.debugDescription)")
+//                            print("onEditingBegan")
                         }
                     )
-                    .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
-                    .listRowSeparator(.hidden)
+                    // .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+//                    .listRowSeparator(.hidden)
                 }
-            }
-            .listStyle(.plain)
+                //            }
+                //            .listStyle(.plain)
 
 
-            HStack {
-                Spacer()
-                Button(confirmButtonTitle) {
-                    finalizeAndSubmit()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(state.editingMessages.isEmpty)
+//                HStack {
+//                    Spacer()
+//                    Button(confirmButtonTitle) {
+//                        finalizeAndSubmit()
+//                    }
+//                    .buttonStyle(.borderedProminent)
+//                    .disabled(state.editingMessages.isEmpty)
+//                }
+//                .padding()
             }
-            .padding()
         }
     }
 
     private func finalizeAndSubmit() {
         print("finalize and submit")
-        // Remove any trailing empty messages
-        while let last = state.editingMessages.last?.message,
-              last.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            state.editingMessages.removeAll(where: { $0.id == last.id })
-        }
-
         withAnimation {
+            // Remove any trailing empty messages
+            while let last = state.editingMessages.last?.message,
+                  last.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                state.editingMessages.removeAll(where: { $0.id == last.id })
+            }
+
             onSubmit(state.editingMessages.map(\.message))
         }
     }
