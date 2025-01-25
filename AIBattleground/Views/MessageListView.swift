@@ -13,6 +13,10 @@ struct MessageListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Note to self:
+            //   If you use List directly, like this:
+            //     List($state.editingMessages, id: \.id) { editingMessage in ...
+            //   Each closure is just given the editingMessage structs -- not bindings, interestingly
             List {
                 if state.editingMessages.isEmpty {
                     Text("No messages")
@@ -21,7 +25,12 @@ struct MessageListView: View {
                         .listRowBackground(Color.clear)
                 }
 
-                ForEach($state.editingMessages, id: \.self) { editingMessage in
+                // Note to self:
+                //   When this line below looked like this:
+                //     ForEach($state.editingMessages, id: \.self) { ...
+                //   When things changed, all MessageRows would get re-created,
+                //   firing their .onAppear, rather than their .onChange.
+                ForEach($state.editingMessages) { editingMessage in
                     MessageRow(
                         editingMessage: editingMessage,
                         confirmButtonTitle: confirmButtonTitle,
@@ -67,6 +76,7 @@ struct MessageListView: View {
                 }
             }
             .listStyle(.plain)
+
 
             HStack {
                 Spacer()
