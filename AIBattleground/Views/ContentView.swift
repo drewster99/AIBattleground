@@ -77,16 +77,13 @@ struct ContentView: View {
 
 struct DebugMessageListView: View {
     @StateObject private var rolesManager = CustomRolesManager()
-    @StateObject private var messageListState = MessageListState([.empty()], isEditable: true)
-
+    @State var editingMessages: [EditingMessageModel] = [.empty()]
     var body: some View {
-        MessageListView(
-            confirmButtonTitle: "Send to AI",
-            onSubmit: { messages in
-                print("messages: \(messages)")
-            }
-        )
-        .environmentObject(messageListState)
+        MessageListView(editingMessages: $editingMessages,
+                        confirmButtonTitle: "Send to AI",
+                        onSubmit: { messages in
+            print("messages: \(messages)")
+        })
         .environmentObject(rolesManager)
     }
 }
@@ -108,9 +105,9 @@ struct DebugSingleMessageView: View {
                        confirmButtonTitle: "Confirm") {
                 // onConfirm
                 lastCallback = "onConfirm"
-//                withAnimation {
-//                    editingMessage.preferredDisplayStyle = .compact
-//                }
+                //                withAnimation {
+                //                    editingMessage.preferredDisplayStyle = .compact
+                //                }
             } onCancel: {
                 lastCallback = "onCancel"
             } onDelete: {
@@ -119,20 +116,20 @@ struct DebugSingleMessageView: View {
                 lastCallback = "onCopy"
             } onEditRequested: {
                 lastCallback = "onEditRequested"
-//                withAnimation {
-//                    rowMode = .edit
-//                }
+                //                withAnimation {
+                //                    rowMode = .edit
+                //                }
             } onExpandRequested: {
                 lastCallback = "onExpandRequested"
-//                withAnimation {
-//                    rowMode = .full
-//                }
+                //                withAnimation {
+                //                    rowMode = .full
+                //                }
             } onEditingBegan: {
                 lastCallback = "onEditingBegan"
             }
             .environmentObject(rolesManager)
             Spacer()
-            
+
 
             Text("Last callback: \(lastCallback)")
             Text("Message: \(editingMessage.message.content)")
@@ -154,6 +151,21 @@ struct DebugSingleMessageView: View {
                     rowMode = .compact
                 }
             }
+        }
+        .onAppear {
+            editingMessage.message.content = """
+attributedTextForFullContentViewattributedTextForFullContentView
+
+attributedTextForFullContentViewattributedTextForFullContentView
+attributedTextForFullContentView
+
+## HEADER ##
+
+Now is the very **very** *very* ***very*** best time for everything.
+
+
+Kick some ass!
+"""
         }
     }
 }

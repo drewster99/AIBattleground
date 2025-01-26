@@ -21,7 +21,7 @@ struct EditingMessageModel: Codable, Identifiable, Equatable, Hashable {
 
     public var debugDescription: String {
         let id = "\(id)".suffix(5)
-        return "id: \(id), rowMode=\(preferredDisplayStyle.id): [\(message.role.rawValue)] \"\(message.content)\""
+        return "id: \(id), preferredDisplayStyle=\(preferredDisplayStyle.id): [\(message.role.rawValue)] \"\(message.content)\""
     }
 
     public static func empty() -> Self {
@@ -31,7 +31,7 @@ struct EditingMessageModel: Codable, Identifiable, Equatable, Hashable {
 }
 
 class MessageListState: ObservableObject {
-    @Published var editingMessages: [EditingMessageModel] = []
+    @Published var editingMessages: [EditingMessageModel] = [.empty()]
 
     private var areAnyRowsEditing: Bool {
         editingMessages.reduce(false) { $0 || $1.preferredDisplayStyle == .edit }
