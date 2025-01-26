@@ -1,0 +1,6 @@
+
+
+SwiftUI on macOS Sequoia 15.2, with Xcode 16.2
+The window has been marked as needing another Update Constraints in Window pass, but it has already had more Update Constraints in Window passes than there are views in the window.  <SwiftUI.AppKitWindow: 0x10a919f00> 0x91aa (37290) {{656, 436}, {1003, 626}} en Future marking as needing Update Constraints in Window might be ignored.
+ScrollView seems to be part of the cause.  Removing it stopped the crash.
+https://developer.apple.com/forums/thread/703083?login=true

@@ -37,11 +37,20 @@ struct MessageRow: View {
     var isEditable: Bool { editingMessage.isEditable }
     var contentHasChanged: Bool { editingText != editingMessage.message.content || originalRole != editingMessage.message.role }
 
+    private var compactText: String {
+        editingMessage.message.content
+            .trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: "\n", with: "  ↵  ")
+    }
+
     private func formatMessage(_ text: String) -> AttributedString {
         do {
-            let options = AttributedString.MarkdownParsingOptions(
-                interpretedSyntax: .inlineOnlyPreservingWhitespace
-            )
+            let options = AttributedString.MarkdownParsingOptions(allowsExtendedAttributes: true,
+                                                                  interpretedSyntax: .inlineOnly,
+                                                                  failurePolicy: .returnPartiallyParsedIfPossible,
+                                                                  languageCode: nil,
+                                                                  appliesSourcePositionAttributes: true)
+
             var attributed = try AttributedString(markdown: text, options: options)
             if case .other = editingMessage.message.role {
                 attributed.foregroundColor = .secondary
@@ -55,8 +64,21 @@ struct MessageRow: View {
     private func handleEditRequest() {
         guard isEditable else { return }
         guard !isEditing else { return }
-        isEditing = true
-        onEditRequested()
+        print(">> handleEditRequest")
+        withAnimation {
+            isEditing = true
+            onEditRequested()
+        }
+    }
+
+    private func handleExpandRequest() {
+        guard !isEditing else { return }
+        guard displayStyle != .full else { return }
+        print(">> handleExpandRequest")
+        withAnimation {
+            displayStyle = .full
+            onExpandRequested()
+        }
     }
 
     private func handleCancel() {
@@ -64,12 +86,12 @@ struct MessageRow: View {
         print(">> handleCancel")
         withAnimation {
             editingText = editingMessage.message.content
-            if let originalRole {
+            if let originalRole, originalRole != editingMessage.message.role {
                 editingMessage.message.role = originalRole
             }
-//            isTextFieldFocused = false
+            //            isTextFieldFocused = false
             isEditing = false
-                            onCancel()
+            onCancel()
         }
     }
 
@@ -176,12 +198,11 @@ struct MessageRow: View {
     /// Compact 1-liner view
     var compactView: some View {
         HStack(spacing: 4) {
-            Text(editingMessage.message.content.components(separatedBy: .newlines).first ?? "")
+            Text(compactText)
                 .lineLimit(1)
                 .truncationMode(.tail)
 
-            if editingMessage.message.content.contains("\n") ||
-                editingMessage.message.content.count > 100 {  // Show (more) if multiline or long
+            if compactText.count > 100 {  // Show (more) if multiline or long
                 Text("(more)")
                     .foregroundStyle(.secondary)
                     .font(.caption)
@@ -195,8 +216,44 @@ struct MessageRow: View {
             if isEditable {
                 handleEditRequest()
             } else {
-                onExpandRequested()
+                handleExpandRequest()
             }
+        }
+    }
+
+    var fullContentView: some View {
+        ScrollView(.vertical) {
+            HStack {
+                            Text(formatMessage(editingText))
+//                Text(editingText)
+                    .multilineTextAlignment(.leading)
+                    .font(.body)
+                    .frame(minHeight: 100)
+//                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: .infinity)
+                    .frame(alignment: .leading)
+//                    .layoutPriority(1)
+                    .padding(.top, 2)
+                    .padding(.horizontal, 4)
+
+                Spacer()
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.2))
+            )
+            .accessibilityLabel("Message content")
+        }
+        .overlay {
+            // Add a hidden button to handle option-r
+            Button("Next role") {
+                if editingMessage.isEditable {
+                    editingMessage.message.role = rolesManager.nextRole(after: editingMessage.message.role)
+                }
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut("r", modifiers: [.command])
+            .hidden()
         }
     }
 
@@ -268,7 +325,6 @@ struct MessageRow: View {
     }
 
     var body: some View {
-        Self._printChanges()
         return VStack(alignment: .leading) {
             if displayStyle == .compact {
                 HStack(alignment: .top) {
@@ -279,6 +335,7 @@ struct MessageRow: View {
                     editButton
                         .matchedGeometryEffect(id: "EditButton", in: animation)
                 }
+                .matchedGeometryEffect(id: "Container", in: animation, anchor: .topLeading)
             } else if displayStyle == .edit || displayStyle == .full {
                 VStack(alignment: .leading) {
                     roleSelector
@@ -286,10 +343,15 @@ struct MessageRow: View {
                     HStack(alignment: .top) {
                         VStack(spacing: 3) {
                             ZStack(alignment: .bottomTrailing) {
-                                editView
-                                    .opacity(displayStyle == .full || isEditable == false ? 0.7 : 1.0)
-                                    .disabled(displayStyle == .full || isEditable == false)
-                                    .matchedGeometryEffect(id: "Content", in: animation, anchor: UnitPoint.topLeading)
+                                if displayStyle == .edit {
+                                    editView
+                                        .opacity(displayStyle == .full || isEditable == false ? 0.7 : 1.0)
+                                        .disabled(displayStyle == .full || isEditable == false)
+                                        .matchedGeometryEffect(id: "Content", in: animation, anchor: UnitPoint.topLeading)
+                                } else {
+                                    fullContentView
+                                        .matchedGeometryEffect(id: "Content", in: animation, anchor: UnitPoint.topLeading)
+                                }
                                 copyButton
                             }
                             bottomTools
@@ -300,20 +362,29 @@ struct MessageRow: View {
                             .matchedGeometryEffect(id: "EditButton", in: animation)
                     }
                 }
+                .matchedGeometryEffect(id: "Container", in: animation, anchor: .topLeading)
             } else {
                 // unknown - future mode
                 fatalError(">>> Unknown displayStyle \(displayStyle)")
             }
         }
         .padding(.horizontal)
-        .animation(.easeInOut(duration: 5), value: displayStyle)
-        .transition(.move(edge: .bottom))
+        .animation(.easeInOut, value: displayStyle)
+        .transition(.move(edge: .top))
         .onChange(of: isEditing) {
             switch isEditing {
             case true:
-                displayStyle = .edit
+                withAnimation {
+                    displayStyle = .edit
+                }
             case false:
                 updateDisplayStyleAfterEditing()
+            }
+        }
+        .onChange(of: editingMessage.preferredDisplayStyle) { old, new in
+            print("@@@ onChange of message \(editingMessage.message) preferredDisplayStyle:  \(old) --> \(new)")
+            if displayStyle == old {
+                displayStyle = new
             }
         }
         .onChange(of: editingMessage.message) {
@@ -327,33 +398,12 @@ struct MessageRow: View {
             updateDisplayStyleAfterEditing()
         }
         .onChange(of: displayStyle) { old, new in
-            print("@@@ onChange \(editingMessage.debugDescription) rowMode \(old) --> \(new)")
-            if new == .edit {
-                if !isEditable {
-                    Task { @MainActor in isTextFieldFocused = false }
-                } else {
-                    Task {
-                        @MainActor in isTextFieldFocused = true
-                        onEditingBegan()
-                    }
-                }
-            }
-            if (new == .compact || new == .full) && old == .edit {
-                handleConfirm()
-            }
+            print("@@@ onChange \(editingMessage.debugDescription) displayStyle \(old) --> \(new)")
         }
         .onAppear {
             print("@@ onAppear \(editingMessage.debugDescription)")
             editingText = editingMessage.message.content
             originalRole = editingMessage.message.role
-//            if editingMessage.isEditable {
-//
-//            }
-//            displayStyle = editingMessage.preferredDisplayStyle
-
-//            if displayStyle == .edit {
-//                isTextFieldFocused = true
-//            }
         }
         .onDisappear {
             copyConfirmationTask?.cancel()
