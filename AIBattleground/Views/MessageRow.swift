@@ -3,13 +3,13 @@ import SwiftUI
 enum MessageDisplayStyle: String, Codable, Equatable, Hashable, Identifiable {
     /// brief summary
     case compact
-    
+
     /// fully expanded
     case full
-    
+
     /// fully expanded and edting
     case edit
-    
+
     var id: String { rawValue }
 }
 
@@ -24,7 +24,7 @@ struct MessageRow: View {
     let onEditRequested: () -> Void
     let onExpandRequested: () -> Void
     let onEditingBegan: () -> Void
-    
+
     @State private var displayStyle: MessageDisplayStyle = .compact
     @State private var isEditing: Bool = false
     @State private var editingText: String = ""
@@ -33,16 +33,16 @@ struct MessageRow: View {
     @FocusState private var isTextFieldFocused: Bool
     @Namespace private var animation
     @State private var originalRole: LLMMessage.MessageRole?
-    
+
     var isEditable: Bool { editingMessage.isEditable }
     var contentHasChanged: Bool { editingText != editingMessage.message.content || originalRole != editingMessage.message.role }
-    
+
     private var compactText: String {
         editingMessage.message.content
             .trimmingCharacters(in: .whitespaces)
             .replacingOccurrences(of: "\n", with: "  ↵  ")
     }
-    
+
     private func formatMessage(_ text: String) -> AttributedString {
         do {
             let options = AttributedString.MarkdownParsingOptions(allowsExtendedAttributes: true,
@@ -50,7 +50,7 @@ struct MessageRow: View {
                                                                   failurePolicy: .returnPartiallyParsedIfPossible,
                                                                   languageCode: nil,
                                                                   appliesSourcePositionAttributes: true)
-            
+
             var attributed = try AttributedString(markdown: text, options: options)
             if case .other = editingMessage.message.role {
                 attributed.foregroundColor = .secondary
@@ -60,7 +60,7 @@ struct MessageRow: View {
             return AttributedString(text)
         }
     }
-    
+
     private func handleEditRequest() {
         guard isEditable else { return }
         guard !isEditing else { return }
@@ -70,7 +70,7 @@ struct MessageRow: View {
             onEditRequested()
         }
     }
-    
+
     private func handleExpandRequest() {
         guard !isEditing else { return }
         guard displayStyle != .full else { return }
@@ -80,7 +80,7 @@ struct MessageRow: View {
             onExpandRequested()
         }
     }
-    
+
     private func handleCancel() {
         guard isEditing else { return }
         print(">> handleCancel")
@@ -94,7 +94,7 @@ struct MessageRow: View {
             onCancel()
         }
     }
-    
+
     private func handleConfirm() {
         guard isEditing else { return }
         print(">> handleConfirm")
@@ -110,7 +110,7 @@ struct MessageRow: View {
             onConfirm()
         }
     }
-    
+
     /// Displays the message role and allows user to change it
     var roleSelector: some View {
         RoleSelector(
@@ -119,7 +119,7 @@ struct MessageRow: View {
         .opacity(isEditable && displayStyle == .edit ? 1.0 : 0.7)
         .disabled(!(isEditable && displayStyle == .edit))
     }
-    
+
     /// A button which copies the main content text to the clipboard
     var copyButton: some View {
         Button(action: {
@@ -127,13 +127,13 @@ struct MessageRow: View {
             let copiedContent = displayStyle == .compact ? editingMessage.message.content : editingText
             print("* Copy: \"\(copiedContent)\"")
             NSPasteboard.general.setString(copiedContent, forType: .string)
-            
+
             onCopy()
             showingCopyConfirmation = true
-            
+
             // Cancel any existing task
             copyConfirmationTask?.cancel()
-            
+
             // Create new task
             copyConfirmationTask = Task {
                 try? await Task.sleep(for: .seconds(2))
@@ -158,7 +158,7 @@ struct MessageRow: View {
         .buttonStyle(.plain)
         .contentShape(Rectangle())
     }
-    
+
     /// A pencil button that can be used to begin editing
     var editButton: some View {
         Button(action: {
@@ -172,7 +172,7 @@ struct MessageRow: View {
         .accessibilityLabel("Edit message")
         .disabled(!editingMessage.isEditable)
     }
-    
+
     var bottomTools: some View {
         HStack {
             Spacer()
@@ -182,7 +182,7 @@ struct MessageRow: View {
             .buttonStyle(.bordered)
             .keyboardShortcut(.escape, modifiers: [])
             .accessibilityLabel("Cancel editing")
-            
+
             Button("Save") {
                 print("doing confirm on \(editingMessage.debugDescription)... editingtext = \(editingText)")
                 handleConfirm()
@@ -194,14 +194,14 @@ struct MessageRow: View {
             .disabled(!contentHasChanged)
         }
     }
-    
+
     /// Compact 1-liner view
     var compactView: some View {
         HStack(spacing: 4) {
             Text(compactText)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            
+
             if compactText.count > 100 {  // Show (more) if multiline or long
                 Text("(more)")
                     .foregroundStyle(.secondary)
@@ -220,7 +220,7 @@ struct MessageRow: View {
             }
         }
     }
-    
+
     var fullContentView: some View {
         ScrollView(.vertical) {
             HStack {
@@ -235,7 +235,7 @@ struct MessageRow: View {
                 //                    .layoutPriority(1)
                     .padding(.top, 2)
                     .padding(.horizontal, 4)
-                
+
                 Spacer()
             }
             .overlay(
@@ -256,7 +256,7 @@ struct MessageRow: View {
             .hidden()
         }
     }
-    
+
     /// Fully expanded editable text
     var editView: some View {
         TextEditor(text: $editingText)
@@ -285,14 +285,14 @@ struct MessageRow: View {
                 .hidden()
             }
     }
-    
+
     func updateDisplayStyleAfterEditing() {
         var newStyle: MessageDisplayStyle = displayStyle
         switch isEditable {
         case true:
             // we are now editable (and weren't before)
             newStyle = editingMessage.preferredDisplayStyle
-            
+
         case false:
             // we are not editable
             if isEditing {
@@ -301,7 +301,7 @@ struct MessageRow: View {
                 } else {
                     handleCancel()
                 }
-                
+
                 if editingMessage.preferredDisplayStyle == .compact {
                     newStyle = .compact
                 } else {
@@ -313,7 +313,7 @@ struct MessageRow: View {
                 }
             }
         }
-        
+
         if newStyle != displayStyle {
             print("updateDisplayStyleAfterEditing (isEditing=\(isEditing), isEditable=\(isEditable), preferred=\(editingMessage.preferredDisplayStyle):  \(displayStyle) -> \(newStyle)")
             withAnimation {
@@ -323,7 +323,7 @@ struct MessageRow: View {
             print("updatedDisplayStyleAfterEditing (isEditing=\(isEditing), isEditable=\(isEditable), preferred=\(editingMessage.preferredDisplayStyle): unchanged \(displayStyle)")
         }
     }
-    
+
     var body: some View {
         VStack(alignment: .leading) {
             if displayStyle == .compact {
@@ -405,7 +405,6 @@ struct MessageRow: View {
         }
         .onChange(of: idOfMessageBeingEdited, initial: true) {
             print("@@@ onChange \(editingMessage.debugDescription) idOfMessageBeingEdited -----> \(idOfMessageBeingEdited)")
-            
             if idOfMessageBeingEdited == editingMessage.id {
                 // we need to start editing
                 isEditing = true
