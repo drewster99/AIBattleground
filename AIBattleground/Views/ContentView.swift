@@ -79,8 +79,7 @@ struct DebugMessageListView: View {
     @StateObject private var rolesManager = CustomRolesManager()
     @State var editingMessages: [EditingMessageModel] = [.empty()]
     var body: some View {
-        MessageListView(editingMessages: $editingMessages,
-                        confirmButtonTitle: "Send to AI",
+        MessageListEditView(editingMessages: $editingMessages,
                         onSubmit: { messages in
             print("messages: \(messages)")
         })
@@ -102,7 +101,7 @@ struct DebugSingleMessageView: View {
     var body: some View {
         VStack {
             MessageRow(editingMessage: $editingMessage,
-                       confirmButtonTitle: "Confirm") {
+                       idOfMessageBeingEdited: nil) {
                 // onConfirm
                 lastCallback = "onConfirm"
                 //                withAnimation {
