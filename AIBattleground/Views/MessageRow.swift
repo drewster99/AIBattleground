@@ -33,6 +33,7 @@ struct MessageRow: View {
     @FocusState private var isTextFieldFocused: Bool
     @Namespace private var animation
     @State private var originalRole: LLMMessage.MessageRole?
+    @State private var isHovering = false
 
     var isEditable: Bool { editingMessage.isEditable }
     var contentHasChanged: Bool { editingText != editingMessage.message.content || originalRole != editingMessage.message.role }
@@ -213,6 +214,7 @@ struct MessageRow: View {
         .accessibilityLabel("Message preview")
         .accessibilityHint("Tap to \(isEditable ? "edit" : "expand")")
         .onTapGesture {
+            guard isHovering else { return }
             if isEditable {
                 handleEditRequest()
             } else {
@@ -333,7 +335,18 @@ struct MessageRow: View {
                     compactView
                         .matchedGeometryEffect(id: "Content", in: animation, anchor: UnitPoint.topLeading)
                     editButton
+                        .opacity(isHovering ? 1 : 0)
                         .matchedGeometryEffect(id: "EditButton", in: animation)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 6,
+                                     style: .continuous)
+                    .fill(isHovering ? editingMessage.message.role.backgroundColor.opacity(0.2) : Color.clear)
+                )
+                .onHover { hover in
+                    isHovering = hover
                 }
                 .matchedGeometryEffect(id: "Container", in: animation, anchor: .topLeading)
             } else if displayStyle == .edit || displayStyle == .full {
@@ -361,8 +374,7 @@ struct MessageRow: View {
                         .opacity(displayStyle == .full ? 1.0 : 0.0)
                         .matchedGeometryEffect(id: "EditButton", in: animation)
                 }
-                //                }
-                //                .matchedGeometryEffect(id: "Container", in: animation, anchor: .topLeading)
+                .padding(.horizontal, 8)
             } else {
                 // unknown - future mode
                 fatalError(">>> Unknown displayStyle \(displayStyle)")
