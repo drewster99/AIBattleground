@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
 
+
+
 struct LLMMessage: Identifiable, Equatable, Codable, Hashable {
     let id: UUID
     let timestamp: Date

@@ -38,10 +38,21 @@ struct MessageRow: View {
     var isEditable: Bool { editingMessage.isEditable }
     var contentHasChanged: Bool { editingText != editingMessage.message.content || originalRole != editingMessage.message.role }
 
-    private var compactText: String {
-        editingMessage.message.content
+    private var compactText: AttributedString {
+        let plainText = editingMessage.message.content
             .trimmingCharacters(in: .whitespaces)
-            .replacingOccurrences(of: "\n", with: "  ↵  ")
+            .replacingOccurrences(of: "\n", with: " ↵  ")
+        let attributedString = NSMutableAttributedString(string: plainText)
+        let fullRange = NSRange(location: 0, length: plainText.utf16.count)
+        let pattern = "↵"
+        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+            regex.enumerateMatches(in: plainText, options: [], range: fullRange) { match, _, _ in
+                if let matchRange = match?.range {
+                    attributedString.addAttribute(.foregroundColor, value: NSColor.systemCyan, range: matchRange)
+                }
+            }
+        }
+        return AttributedString(attributedString)
     }
 
     private func formatMessage(_ text: String) -> AttributedString {
@@ -203,7 +214,7 @@ struct MessageRow: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
 
-            if compactText.count > 100 {  // Show (more) if multiline or long
+            if compactText.characters.count > 100 {  // Show (more) if multiline or long
                 Text("(more)")
                     .foregroundStyle(.secondary)
                     .font(.caption)
