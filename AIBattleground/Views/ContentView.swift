@@ -9,6 +9,7 @@ struct ContentView: View {
         case debugServices
         case debugMessages
         case debugSingleMessage
+        case debugPromptMessage
         case services
         case models
         case challenge
@@ -40,6 +41,13 @@ struct ContentView: View {
                             .padding()
                     }
                     .tag(Tab.debugSingleMessage)
+                    NavigationLink {
+                        DebugPromptMessageView()
+                    } label: {
+                        Label("Debug Prompt Message", systemImage: "message.fill")
+                            .padding()
+                    }
+                    .tag(Tab.debugPromptMessage)
 #endif
 
                     NavigationLink {
