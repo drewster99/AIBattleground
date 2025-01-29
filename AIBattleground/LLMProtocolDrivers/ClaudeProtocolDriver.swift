@@ -27,10 +27,14 @@ struct ClaudeResponse: Decodable {
     struct Usage: Decodable {
         let inputTokens: Int
         let outputTokens: Int
-        
+        let cacheCreationInputTokens: Int?
+        let cacheReadInputTokens: Int?
+
         enum CodingKeys: String, CodingKey {
             case inputTokens = "input_tokens"
             case outputTokens = "output_tokens"
+            case cacheCreationInputTokens = "cache_creation_input_tokens"
+            case cacheReadInputTokens = "cache_read_input_tokens"
         }
     }
     
@@ -81,6 +85,7 @@ class ClaudeProtocolDriver: LLMProtocolProvider {
         }
         
         let claudeResponse = try decoder.decode(ClaudeResponse.self, from: data)
+        print("* Stop reason: \(claudeResponse.stop_reason)")
         return convertToLLMResponse(claudeResponse)
     }
     

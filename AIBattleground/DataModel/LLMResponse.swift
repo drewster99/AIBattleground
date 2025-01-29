@@ -7,8 +7,11 @@ struct LLMResponse: Identifiable, Codable {
     let totalTokens: Int?
     let promptTokens: Int?
     let completionTokens: Int?
+    let cacheReadInputTokens: Int?
+    let cacheCreationInputTokens: Int?
     let finishReason: String?
-    
+    let refusal: String?
+
     // For streaming responses
     var isComplete: Bool
     var streamedContent: [String]
@@ -19,9 +22,12 @@ struct LLMResponse: Identifiable, Codable {
         totalTokens: Int? = nil,
         promptTokens: Int? = nil,
         completionTokens: Int? = nil,
+        cacheReadInputTokens: Int? = nil,
+        cacheCreationInputTokens: Int? = nil,
         finishReason: String? = nil,
         isComplete: Bool = true,
-        streamedContent: [String] = []
+        streamedContent: [String] = [],
+        refusal: String? = nil
     ) {
         self.id = id
         self.timestamp = Date()
@@ -29,9 +35,12 @@ struct LLMResponse: Identifiable, Codable {
         self.totalTokens = totalTokens
         self.promptTokens = promptTokens
         self.completionTokens = completionTokens
+        self.cacheReadInputTokens = cacheReadInputTokens
+        self.cacheCreationInputTokens = cacheCreationInputTokens
         self.finishReason = finishReason
         self.isComplete = isComplete
         self.streamedContent = streamedContent
+        self.refusal = refusal
     }
     
     var fullContent: String {
