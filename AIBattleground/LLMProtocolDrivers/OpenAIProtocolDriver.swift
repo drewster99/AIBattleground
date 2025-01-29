@@ -16,11 +16,13 @@ struct OpenAIRequest: Encodable {
 
 struct OpenAIResponse: Decodable {
     struct Choice: Decodable {
+        let index: Int
         let message: OpenAIMessage
         let finishReason: String?
-
+//        let logProbs: ??
         enum CodingKeys: String, CodingKey {
-            case message
+            case index = "index"
+            case message = "message"
             case finishReason = "finish_reason"
         }
     }
@@ -29,22 +31,67 @@ struct OpenAIResponse: Decodable {
         let promptTokens: Int
         let completionTokens: Int
         let totalTokens: Int
+        let promptTokensDetails: PromptTokensDetails?
+        let completionTokensDetails: CompletionTokensDetails?
 
         enum CodingKeys: String, CodingKey {
             case promptTokens = "prompt_tokens"
             case completionTokens = "completion_tokens"
             case totalTokens = "total_tokens"
+            case promptTokensDetails = "prompt_tokens_details"
+            case completionTokensDetails = "completion_tokens_details"
+        }
+
+        struct PromptTokensDetails: Decodable {
+            let cachedTokens: Int
+            let audioTokens: Int
+
+            enum CodingKeys: String, CodingKey {
+                case cachedTokens = "cached_tokens"
+                case audioTokens = "audio_tokens"
+            }
+        }
+
+        struct CompletionTokensDetails: Decodable {
+            let reasoningTokens: Int
+            let audioTokens: Int
+            let acceptedPredictionTokens: Int
+            let rejectedPredictionTokens: Int
+
+            enum CodingKeys: String, CodingKey {
+                case reasoningTokens = "reasoning_tokens"
+                case audioTokens = "audio_tokens"
+                case acceptedPredictionTokens = "accepted_prediction_tokens"
+                case rejectedPredictionTokens = "rejected_prediction_tokens"
+            }
         }
     }
 
     struct OpenAIMessage: Decodable {
         let role: String
         let content: String
+        let refusal: String?
     }
 
     var id: String?
+    var object: String?
+    var created: Date?
+    var model: String?
     let choices: [Choice]
     let usage: Usage
+    let serviceTier: String?
+    let systemFingerprint: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "id"
+        case object = "object"
+        case created = "created"
+        case model = "model"
+        case choices = "choices"
+        case usage = "usage"
+        case serviceTier = "service_tier"
+        case systemFingerprint = "system_fingerprint"
+    }
 }
 
 class OpenAIProtocolDriver: LLMProtocolProvider {
@@ -56,6 +103,7 @@ class OpenAIProtocolDriver: LLMProtocolProvider {
     required init(configuration: LLMServiceConfiguration) {
         self.configuration = configuration
         self.session = .shared
+        self.decoder.dateDecodingStrategy = .secondsSince1970
     }
 
     // convenience
@@ -128,6 +176,10 @@ class OpenAIProtocolDriver: LLMProtocolProvider {
 
         let (data, response) = try await session.data(for: request)
 
+        print("""
+        * Response data (\(data.count) bytes):
+        \(String(data: data, encoding: .utf8) ?? "<INTERNAL ERROR (NOT FROM INTERNET) - RESPONSE IS NOT UTF8>")
+        """)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw LLMError.invalidResponse
         }
