@@ -29,21 +29,22 @@ class VariableTextViewController: NSViewController {
     }
 
     override func loadView() {
-        // Create scroll view
-        scrollView = NSScrollView()
+
+        let scrollView = NSTextView.scrollableTextView()
+        let textView = scrollView.documentView as! NSTextView
+        self.textView = textView
+        self.scrollView = scrollView
+        storage.addLayoutManager(textView.layoutManager!)
+        textView.string = storage.string
+
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
         scrollView.borderType = .noBorder
         scrollView.focusRingType = .none
+        scrollView.hasVerticalRuler = false
+        scrollView.hasHorizontalRuler = false
 
-        // Create text view with our custom storage
-        let layoutManager = NSLayoutManager()
-        let container = NSTextContainer()
-        layoutManager.addTextContainer(container)
-        storage.addLayoutManager(layoutManager)
-
-        textView = NSTextView(frame: .zero, textContainer: container)
         textView.allowsUndo = true
         textView.isRichText = true
         textView.isEditable = true
@@ -54,6 +55,14 @@ class VariableTextViewController: NSViewController {
         textView.smartInsertDeleteEnabled = false
         textView.isFieldEditor = false
         textView.focusRingType = .none
+        textView.drawsBackground = true
+        textView.insertionPointColor = NSColor.systemOrange
+        
+        // Configure selection behavior
+        textView.selectedTextAttributes = [
+            .backgroundColor: NSColor.selectedTextBackgroundColor
+//            .foregroundColor: NSColor.selectedTextColor
+        ]
 
         // Set default text attributes
         let defaultAttributes: [NSAttributedString.Key: Any] = [
@@ -67,12 +76,14 @@ class VariableTextViewController: NSViewController {
         textView.delegate = self
         textView.textContainerInset = NSSize(width: 5, height: 5)
 
-        // Configure scroll view
-        scrollView.documentView = textView
-        scrollView.hasVerticalRuler = false
-        scrollView.hasHorizontalRuler = false
-        scrollView.drawsBackground = true
+        self.view = scrollView
+    }
 
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        DispatchQueue.main.async { [weak self] in
+            self?.view.window?.makeFirstResponder(self?.textView)
+        }
         // Set up keyboard monitoring for Command-4
         keyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "4" {
@@ -82,20 +93,13 @@ class VariableTextViewController: NSViewController {
             return event
         }
 
-        self.view = scrollView
-    }
-
-    override func viewDidAppear() {
-        super.viewDidAppear()
-        DispatchQueue.main.async { [weak self] in
-            self?.view.window?.makeFirstResponder(self?.textView)
-        }
     }
 
     override func viewDidDisappear() {
         super.viewDidDisappear()
         if let monitor = keyboardMonitor {
             NSEvent.removeMonitor(monitor)
+            keyboardMonitor = nil
         }
     }
 
