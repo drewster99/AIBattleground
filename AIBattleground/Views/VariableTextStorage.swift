@@ -56,9 +56,10 @@ class VariableTextStorage: NSTextStorage, ObservableObject {
 
         // Apply variable styling
         let attributes: [NSAttributedString.Key: Any] = [
-            .backgroundColor: NSColor.systemBlue.withAlphaComponent(0.2),
-            .foregroundColor: NSColor.systemBlue,
-            .font: NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .medium),
+//            .backgroundColor: NSColor.systemBlue.withAlphaComponent(0.2),
+            .foregroundColor: NSColor.systemOrange,
+            .font: NSFont.systemFont(ofSize: NSFont.systemFontSize + 1.0, weight: .medium),
+
             .variableIdentifier: variable.id
         ]
         storage.setAttributes(attributes, range: range)
