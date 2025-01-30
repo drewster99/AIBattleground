@@ -25,7 +25,6 @@ struct PromptMessageEditView: View {
                     }
                 }
             )
-            .focusable()
             .frame(minHeight: 100)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
@@ -125,6 +124,7 @@ struct VariableInsertMenu: View {
                 storage.insertVariable(variable, at: insertPoint, viewText: $viewText)
                 dismiss()
             }
+
             .disabled(newVariableName.isEmpty)
             .buttonStyle(.borderedProminent)
         }
