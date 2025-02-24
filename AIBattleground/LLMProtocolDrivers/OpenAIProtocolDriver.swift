@@ -281,6 +281,20 @@ class OpenAIProtocolDriver: LLMProtocolProvider {
                 }
             }
 
+            print("request \(request), url \(request.url) abs \(request.url?.absoluteString ?? "none")")
+            if request.url?.absoluteString == "http://127.0.0.1:1234/models" {
+                // LM Studio
+                let modelNames : [String] = ["lm-studio"]
+                let results = modelNames.map { modelName in
+                    LLMAvailableModelEntry(id: modelName,
+                                           displayName: nil,
+                                           provider: "LM Studio",
+                                           created: .now,
+                                           description: "fakey fake test")
+                }
+                completion(.success(results))
+                return
+            }
             if request.url?.absoluteString == "https://generativelanguage.googleapis.com/v1beta/openai/models" {
                 // Google Gemini - OpenAI api compat doesn't work for this call
                 guard hasNonEmptyApiKey else {
