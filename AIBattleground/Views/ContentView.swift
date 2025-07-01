@@ -12,6 +12,7 @@ struct ContentView: View {
         case debugPromptMessage
         case services
         case models
+        case profiles
         case challenge
     }
 
@@ -65,6 +66,14 @@ struct ContentView: View {
                             .padding()
                     }
                     .tag(Tab.models)
+                    
+                    NavigationLink {
+                        ProfileManagerView()
+                    } label: {
+                        Label("Profiles", systemImage: "person.fill")
+                            .padding()
+                    }
+                    .tag(Tab.profiles)
 
                     NavigationLink {
                         ChallengeView()

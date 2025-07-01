@@ -13,6 +13,7 @@ struct AIBattlegroundApp: App {
     @StateObject private var credentialManager = LLMCredentialKeyManager.shared
     @StateObject private var modelManager = LLMModelManager.shared
     @StateObject private var serviceManager = LLMServiceManager.shared
+    @StateObject private var profileManager = LLMProfileManager.shared
 
     init() {
 
@@ -42,6 +43,7 @@ struct AIBattlegroundApp: App {
                 .environmentObject(credentialManager)
                 .environmentObject(serviceManager)
                 .environmentObject(modelManager)
+                .environmentObject(profileManager)
         }
     }
 }
