@@ -295,29 +295,29 @@ class OpenAIProtocolDriver: LLMProtocolProvider {
                 completion(.success(results))
                 return
             }
-            if request.url?.absoluteString == "https://generativelanguage.googleapis.com/v1beta/openai/models" {
-                // Google Gemini - OpenAI api compat doesn't work for this call
-                guard hasNonEmptyApiKey else {
-                    completion(.failure(.authenticationError))
-                    return
-                }
-
-                let modelNames: [String] = [
-                    "gemini-2.0-flash-exp",
-                    "gemini-1.5-flash",
-                    "gemini-1.5-flash-8b",
-                    "gemini-1.5-pro"
-                ]
-                let results = modelNames.map { modelName in
-                    LLMAvailableModelEntry(id: modelName,
-                                           displayName: nil,
-                                           provider: "Google Gemini",
-                                           created: .now,
-                                           description: "Added from hardcoded list - Gemini's OpenAI compatability doesn't support the \"models\" endpoint")
-                }
-                completion(.success(results))
-                return
-            }
+//            if request.url?.absoluteString == "https://generativelanguage.googleapis.com/v1beta/openai/models" {
+//                // Google Gemini - OpenAI api compat doesn't work for this call
+//                guard hasNonEmptyApiKey else {
+//                    completion(.failure(.authenticationError))
+//                    return
+//                }
+//
+//                let modelNames: [String] = [
+//                    "gemini-2.0-flash-exp",
+//                    "gemini-1.5-flash",
+//                    "gemini-1.5-flash-8b",
+//                    "gemini-1.5-pro"
+//                ]
+//                let results = modelNames.map { modelName in
+//                    LLMAvailableModelEntry(id: modelName,
+//                                           displayName: nil,
+//                                           provider: "Google Gemini",
+//                                           created: .now,
+//                                           description: "Added from hardcoded list - Gemini's OpenAI compatability doesn't support the \"models\" endpoint")
+//                }
+//                completion(.success(results))
+//                return
+//            }
             print("""
         
         🌐 Outgoing Request:

@@ -36,14 +36,35 @@ struct AIBattlegroundApp: App {
             ContentView()
                 .task {
                     await modelManager.refreshAvailableModels(for: serviceManager.services)
+                    
+                    // Create default profiles for all available models
+                    await createDefaultProfiles()
                 }
                 .onChange(of: serviceManager.services) { old, new in
-                    Task { await modelManager.refreshAvailableModels(for: new) }
+                    Task { 
+                        await modelManager.refreshAvailableModels(for: new)
+                        
+                        // Create default profiles for any new models
+                        await createDefaultProfiles()
+                    }
                 }
                 .environmentObject(credentialManager)
                 .environmentObject(serviceManager)
                 .environmentObject(modelManager)
                 .environmentObject(profileManager)
+        }
+    }
+    
+    private func createDefaultProfiles() async {
+        // Get all enabled models
+        let models = await modelManager.enabledModels
+        
+        // For each model, ensure there's a default profile
+        for model in models {
+            await profileManager.getProfileForModel(
+                modelEntry: model.modelEntry,
+                modelSettings: model.modelSettings
+            )
         }
     }
 }
