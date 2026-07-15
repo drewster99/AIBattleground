@@ -12,7 +12,6 @@ struct DeepSeekTests {
         protocolDriver: .openai,
         endpointURL: URL(string: "https://api.deepseek.com/v1")!,
         thumbnailImageURL: URL(string: "https://deepseek.com/favicon.ico")!
-        // REVOKED-KEY-REMOVED
     )
 
     let modelSettings = LLMModelSettings(
